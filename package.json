@@ -2,7 +2,7 @@
   "name": "hoppy-claude-code",
   "displayName": "Hoppy for Claude Code",
   "description": "Out of tokens? Hoppy hops. Switch between your Claude accounts and other AI models (free or paid: OpenRouter, Gemini, DeepSeek, GLM) in Claude Code, keep your chat context, and continue any chat on another account or model. Not affiliated with Anthropic.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "shahreyar",
   "license": "MIT",
   "engines": {

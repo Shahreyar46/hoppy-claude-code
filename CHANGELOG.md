@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Added the source code repository, homepage and issue tracker links: https://github.com/Shahreyar46/hoppy-claude-code
+
 ## 1.0.0
 
 First release of Hoppy for Claude Code.
