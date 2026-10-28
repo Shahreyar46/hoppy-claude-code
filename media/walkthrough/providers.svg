@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="420" viewBox="0 0 600 420" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.35"/></filter>
+    <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="external" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="cursor" viewBox="0 0 24 24"><path d="M4 2l15 9-6.5 1.6L16 20l-2.6 1.2-3.4-7.3L5 19z" fill="#fff" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  </defs>
+
+  <g filter="url(#shadow)"><rect x="20" y="16" width="560" height="384" rx="12" fill="var(--vscode-editor-background, #1e1e1e)" stroke="var(--vscode-widget-border, #3c3c3c)"/></g>
+  <circle cx="42" cy="36" r="5" fill="#ff5f57"/><circle cx="58" cy="36" r="5" fill="#febc2e"/><circle cx="74" cy="36" r="5" fill="#28c840"/>
+  <text x="44" y="72" font-size="16" font-weight="600" fill="var(--vscode-foreground, #cccccc)">Hoppy · AI Providers</text>
+
+  <!-- OpenRouter card -->
+  <rect x="44" y="92" width="512" height="216" rx="10" fill="var(--vscode-quickInput-background, #252526)" stroke="var(--vscode-widget-border, #454545)"/>
+  <rect x="44" y="92" width="4" height="216" rx="2" fill="#b180d7"/>
+  <rect x="66" y="112" width="44" height="44" rx="9" fill="#b180d7" fill-opacity="0.15" stroke="#b180d7" stroke-opacity="0.6"/>
+  <text x="88" y="139" font-size="13" font-weight="700" text-anchor="middle" fill="#b180d7" font-family="Consolas, monospace">OR</text>
+  <text x="124" y="130" font-size="16" font-weight="600" fill="var(--vscode-foreground, #cccccc)">OpenRouter</text>
+  <text x="124" y="150" font-size="12.5" fill="var(--vscode-descriptionForeground, #9d9d9d)">Recommended · free and paid models, one key</text>
+  <!-- toggle on -->
+  <rect x="496" y="116" width="40" height="22" rx="11" fill="#b180d7"/><circle cx="525" cy="127" r="8" fill="#fff"/>
+
+  <!-- key input -->
+  <rect x="66" y="178" width="310" height="38" rx="6" fill="var(--vscode-input-background, #313131)" stroke="var(--vscode-focusBorder, #007fd4)"/>
+  <text x="80" y="202" font-size="14" fill="var(--vscode-foreground, #cccccc)" font-family="Consolas, monospace" letter-spacing="1">sk-or-v1-••••••••••••</text>
+  <rect x="388" y="178" width="148" height="38" rx="6" fill="var(--vscode-button-background, #0e639c)"/>
+  <text x="462" y="202" font-size="14" font-weight="600" text-anchor="middle" fill="var(--vscode-button-foreground, #ffffff)">Test &amp; save</text>
+  <use href="#cursor" x="506" y="206" width="22" height="22"/>
+
+  <!-- result + get key -->
+  <circle cx="76" cy="256" r="10" fill="#3fb950" fill-opacity="0.18"/>
+  <use href="#check" x="69" y="249" width="14" height="14" color="#3fb950"/>
+  <text x="94" y="261" font-size="13.5" font-weight="600" fill="#3fb950">OpenRouter OK · 50/50 free left today</text>
+  <text x="514" y="286" font-size="13" text-anchor="end" fill="var(--vscode-textLink-foreground, #3794ff)">Get a key</text>
+  <use href="#external" x="520" y="274" width="14" height="14" color="var(--vscode-textLink-foreground, #3794ff)"/>
+
+  <!-- badges -->
+  <g font-size="13" font-weight="700" text-anchor="middle">
+    <circle cx="556" cy="281" r="13" fill="#f59e0b" stroke="var(--vscode-editor-background, #1e1e1e)" stroke-width="3"/><text x="556" y="285.5" fill="#1a1a1a">1</text>
+    <circle cx="66" cy="197" r="13" fill="#f59e0b" stroke="var(--vscode-editor-background, #1e1e1e)" stroke-width="3"/><text x="66" y="201.5" fill="#1a1a1a">2</text>
+    <circle cx="536" cy="197" r="13" fill="#f59e0b" stroke="var(--vscode-editor-background, #1e1e1e)" stroke-width="3"/><text x="536" y="201.5" fill="#1a1a1a">3</text>
+  </g>
+
+  <!-- legend -->
+  <g font-size="13" fill="var(--vscode-foreground, #cccccc)">
+    <circle cx="58" cy="338" r="10" fill="#f59e0b"/><text x="58" y="342.5" font-size="11" font-weight="700" text-anchor="middle" fill="#1a1a1a">1</text>
+    <text x="74" y="343">Get a key</text>
+    <circle cx="200" cy="338" r="10" fill="#f59e0b"/><text x="200" y="342.5" font-size="11" font-weight="700" text-anchor="middle" fill="#1a1a1a">2</text>
+    <text x="216" y="343">Paste it</text>
+    <circle cx="330" cy="338" r="10" fill="#f59e0b"/><text x="330" y="342.5" font-size="11" font-weight="700" text-anchor="middle" fill="#1a1a1a">3</text>
+    <text x="346" y="343">Test &amp; save</text>
+  </g>
+  <text x="44" y="374" font-size="12" fill="var(--vscode-descriptionForeground, #9d9d9d)">Your key stays on this PC. Hoppy only ever shows its last 4 characters.</text>
+</svg>

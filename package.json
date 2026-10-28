@@ -1,0 +1,257 @@
+{
+  "name": "hoppy-claude-code",
+  "displayName": "Hoppy for Claude Code",
+  "description": "Out of tokens? Hoppy hops. Switch between your Claude accounts and other AI models (free or paid: OpenRouter, Gemini, DeepSeek, GLM) in Claude Code, keep your chat context, and continue any chat on another account or model. Not affiliated with Anthropic.",
+  "version": "1.0.0",
+  "publisher": "shahreyar",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "hoppy.menu",
+        "title": "Hoppy: Menu"
+      },
+      {
+        "command": "hoppy.settings",
+        "title": "Hoppy: Settings"
+      },
+      {
+        "command": "hoppy.guide",
+        "title": "Hoppy: Getting Started Guide"
+      },
+      {
+        "command": "hoppy.setup",
+        "title": "Hoppy: Set Up API Keys"
+      },
+      {
+        "command": "hoppy.switch",
+        "title": "Hoppy: Switch Account or Model…"
+      },
+      {
+        "command": "hoppy.useClaude",
+        "title": "Hoppy: Switch to a Claude Account"
+      },
+      {
+        "command": "hoppy.useOtherAi",
+        "title": "Hoppy: Switch to Other AI Models"
+      },
+      {
+        "command": "hoppy.handoff",
+        "title": "Hoppy: Continue a Chat on Another Account or Model"
+      },
+      {
+        "command": "hoppy.addAccount",
+        "title": "Hoppy: Add Claude Account"
+      },
+      {
+        "command": "hoppy.renameAccount",
+        "title": "Hoppy: Rename Account"
+      },
+      {
+        "command": "hoppy.syncFreeModels",
+        "title": "Hoppy: Refresh Model List"
+      },
+      {
+        "command": "hoppy.gatewayRestart",
+        "title": "Hoppy: Restart Gateway"
+      },
+      {
+        "command": "hoppy.installSkill",
+        "title": "Hoppy: Install Second-Opinion Skill"
+      },
+      {
+        "command": "hoppy.status",
+        "title": "Hoppy: Show Status"
+      }
+    ],
+    "configuration": {
+      "title": "Hoppy",
+      "properties": {
+        "hoppy.autoStartGateway": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start the claude-code-router gateway when VS Code opens."
+        },
+        "hoppy.syncChatsOnSwitch": {
+          "type": "boolean",
+          "default": true,
+          "description": "When switching, copy this project's chats from your other accounts and Other AI so /resume shows all of them. Originals are never changed."
+        },
+        "hoppy.accountLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "Friendly names for Claude account folders, e.g. { \"C:\\\\Users\\\\me\\\\.claude\": \"Work\" }."
+        },
+        "hoppy.routerConfigDir": {
+          "type": "string",
+          "default": "~/.claude-router",
+          "description": "Claude Code config folder used for Other AI Models mode."
+        },
+        "hoppy.claudeConfigDirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra Claude Code config folders to search for chats to hand off. ~/.claude and ~/.claude-account* are always searched."
+        },
+        "hoppy.fallbackModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "openrouter/nvidia/nemotron-3.5-super-vl:free",
+            "openrouter/poolside/laguna-s-2.1:free",
+            "openrouter/google/gemma-4-31b-it:free",
+            "openrouter/thinkingmachines/inkling:free",
+            "gemini/gemini-3.8-flash"
+          ],
+          "description": "Models the gateway tries, in order, when the selected model fails."
+        },
+        "hoppy.mainModel": {
+          "type": "string",
+          "default": "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+          "description": "Default model for Other AI Models mode (Opus/Sonnet/Fable slots)."
+        },
+        "hoppy.smallModel": {
+          "type": "string",
+          "default": "openrouter/nvidia/nemotron-3.5-lightning:free",
+          "description": "Model for background tasks (Haiku slot)."
+        }
+      }
+    },
+    "walkthroughs": [
+      {
+        "id": "getStarted",
+        "title": "Get started with Hoppy",
+        "description": "Use all your Claude accounts and other AI models in the Claude panel. 5 short steps.",
+        "steps": [
+          {
+            "id": "switch",
+            "title": "Switch in one click",
+            "description": "Click **Claude** in the status bar (bottom right). A list opens **at the top of VS Code**: pick an account or **Other AI**. A new Claude tab opens on it right away.\nAlso: **Settings → Accounts**, or **Ctrl+Shift+P → Hoppy: Switch**. No button? Right-click the status bar and tick **Hoppy**.\n[Try it now](command:hoppy.menu)",
+            "media": {
+              "svg": "media/walkthrough/switch.svg",
+              "altText": "Step 1: click the Claude item in the status bar at the bottom. Step 2: the Hoppy list opens at the top of VS Code; pick a Claude account or Other AI."
+            },
+            "completionEvents": [
+              "onCommand:hoppy.menu",
+              "onCommand:hoppy.switchToDir"
+            ]
+          },
+          {
+            "id": "accounts",
+            "title": "Add another Claude account",
+            "description": "Optional. Use a work and a personal account side by side: add it, give it a name, then log in in the new Claude tab.\n[Add Claude account](command:hoppy.addAccount)",
+            "media": {
+              "svg": "media/walkthrough/accounts.svg",
+              "altText": "Step 1: click Add Claude account and name it. Step 2: log in with that account in the new Claude tab."
+            },
+            "completionEvents": [
+              "onCommand:hoppy.addAccount"
+            ]
+          },
+          {
+            "id": "providers",
+            "title": "Connect other AI models",
+            "description": "Add an API key, free or paid: OpenRouter, Gemini, DeepSeek or GLM. Get a key, paste it, click **Test & save**. Tip: one free OpenRouter key unlocks 15+ free models.\n[Add an API key](command:hoppy.settings?%5B%22providers%22%5D)",
+            "media": {
+              "svg": "media/walkthrough/providers.svg",
+              "altText": "OpenRouter card: 1 get a key, 2 paste it in the box, 3 click Test and save. A green check confirms the key works."
+            },
+            "completionEvents": [
+              "onContext:hoppy.hasProvider"
+            ]
+          },
+          {
+            "id": "continue",
+            "title": "Hit a limit? Keep going",
+            "description": "Move a chat to another account or to Other AI. Then type **/resume** in the new Claude tab and pick it. Everything comes with it.\n[Continue a chat](command:hoppy.handoff)",
+            "media": {
+              "svg": "media/walkthrough/continue.svg",
+              "altText": "A chat on Claude Work hit its usage limit. Step 1: continue the chat. Step 2: type /resume in the new Other AI tab. Step 3: pick the chat."
+            },
+            "completionEvents": [
+              "onCommand:hoppy.handoff",
+              "onStepSelected"
+            ]
+          },
+          {
+            "id": "extras",
+            "title": "Optional extras",
+            "description": "Choose exactly which models appear (free or paid, e.g. DeepSeek, MiMo), set backups, and let Claude ask another AI for you.\n[Choose models](command:hoppy.settings?%5B%22models%22%5D)\n[Install /second-opinion](command:hoppy.installSkill)",
+            "media": {
+              "svg": "media/walkthrough/extras.svg",
+              "altText": "Left: backup models tried top to bottom. Right: asking nemotron for a second opinion from inside a Claude chat."
+            },
+            "completionEvents": [
+              "onStepSelected"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "package": "vsce package --allow-missing-repository --skip-license",
+    "test": "tsc -p . && node test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.2.1",
+    "mocha": "^12.0.3",
+    "typescript": "^5.4.5"
+  },
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#FFB38A",
+    "theme": "light"
+  },
+  "author": {
+    "name": "Shahreyar Shimul"
+  },
+  "keywords": [
+    "claude",
+    "claude code",
+    "anthropic",
+    "ai",
+    "multiple accounts",
+    "account switcher",
+    "openrouter",
+    "gemini",
+    "deepseek",
+    "glm",
+    "llm",
+    "usage limit",
+    "chat history"
+  ],
+  "pricing": "Free",
+  "qna": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Shahreyar46/hoppy-claude-code.git"
+  },
+  "homepage": "https://github.com/Shahreyar46/hoppy-claude-code#readme",
+  "bugs": {
+    "url": "https://github.com/Shahreyar46/hoppy-claude-code/issues"
+  }
+}

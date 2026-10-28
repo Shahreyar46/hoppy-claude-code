@@ -1,0 +1,16 @@
+node_modules/
+out/
+*.vsix
+_session-state.md
+.vscode-test/
+*.zip
+.playwright-mcp/
+# video project: keep the editable sources, skip generated media and tools
+video/node_modules/
+video/out/
+video/dist/
+video/audio/
+video/stills/
+video/assets/
+video/.code-motion-history.json
+icon-dataurl.txt

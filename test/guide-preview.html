@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { margin: 0; font-family: Segoe UI, sans-serif; display: grid; grid-template-columns: 1fr 1fr; }
+  .theme { padding: 24px; display: grid; gap: 24px; justify-items: center; }
+  .dark { background: #1f1f1f; color: #ccc;
+    --vscode-editor-background: #1e1e1e; --vscode-foreground: #cccccc; --vscode-descriptionForeground: #9d9d9d;
+    --vscode-widget-border: #454545; --vscode-quickInput-background: #252526; --vscode-list-activeSelectionBackground: #04395e;
+    --vscode-list-activeSelectionForeground: #fff; --vscode-statusBar-background: #007acc; --vscode-statusBar-foreground: #fff;
+    --vscode-editorLineNumber-foreground: #6e7681; --vscode-input-background: #313131; --vscode-button-background: #0e639c; --vscode-button-foreground: #fff; }
+  .light { background: #f3f3f3; color: #333;
+    --vscode-editor-background: #ffffff; --vscode-foreground: #1f1f1f; --vscode-descriptionForeground: #616161;
+    --vscode-widget-border: #d4d4d4; --vscode-quickInput-background: #f8f8f8; --vscode-list-activeSelectionBackground: #0060c0;
+    --vscode-list-activeSelectionForeground: #fff; --vscode-statusBar-background: #007acc; --vscode-statusBar-foreground: #fff;
+    --vscode-editorLineNumber-foreground: #b0b0b0; --vscode-input-background: #ffffff; --vscode-button-background: #005fb8; --vscode-button-foreground: #fff; }
+  .slot { width: 600px; }
+</style>
+</head>
+<body>
+<div class="theme dark" id="dark"></div>
+<div class="theme light" id="light"></div>
+<script>
+  // Inline the SVGs (not <img>) so they inherit the theme variables like VS Code's walkthrough does.
+  const files = ['switch', 'accounts', 'providers', 'continue', 'extras'];
+  for (const id of ['dark', 'light']) {
+    for (const f of files) {
+      fetch(`../media/walkthrough/${f}.svg`).then((r) => (r.ok ? r.text() : '')).then((svg) => {
+        const d = document.createElement('div');
+        d.className = 'slot';
+        d.dataset.file = f;
+        d.innerHTML = svg.replace(/id="/g, `id="${id}-${f}-`).replace(/url\(#/g, `url(#${id}-${f}-`).replace(/href="#/g, `href="#${id}-${f}-`);
+        document.getElementById(id).appendChild(d);
+      });
+    }
+  }
+</script>
+</body>
+</html>

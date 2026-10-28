@@ -1,0 +1,210 @@
+{
+  "voice": {
+    "provider": "auto",
+    "edge": "en-US-AndrewNeural",
+    "rate": "-6%",
+    "style": "Friendly, confident product-film narrator. Warm, clear, unhurried."
+  },
+  "lead_in": 5.2,
+  "gap": 0.42,
+  "lines": [
+    {
+      "id": "meet",
+      "text": "Meet Hoppy.",
+      "pause": 0.9
+    },
+    {
+      "id": "q1",
+      "text": "Ran out of Claude tokens in the middle of a task?",
+      "pause": 0.35
+    },
+    {
+      "id": "q2",
+      "text": "Juggling more than one Claude account?",
+      "pause": 0.35
+    },
+    {
+      "id": "q3",
+      "text": "Lost your session, and all its context?",
+      "pause": 0.35
+    },
+    {
+      "id": "q4",
+      "text": "Wish you could use other AI models too?",
+      "pause": 0.6
+    },
+    {
+      "id": "fix",
+      "text": "Here is how Hoppy fixes all of it.",
+      "pause": 0.3
+    },
+    {
+      "id": "sol1",
+      "text": "All your Claude accounts, in one place."
+    },
+    {
+      "id": "sol2",
+      "text": "Other AI models, with your own API keys."
+    },
+    {
+      "id": "sol3",
+      "text": "And your chats and context, never lost.",
+      "pause": 0.7
+    },
+    {
+      "id": "inst1",
+      "text": "Getting started takes a minute."
+    },
+    {
+      "id": "inst2",
+      "text": "Open Extensions, search Hoppy for Claude Code, and click Install."
+    },
+    {
+      "id": "inst3",
+      "text": "A short guide opens and walks you through it.",
+      "pause": 0.5
+    },
+    {
+      "id": "sw1",
+      "text": "Hoppy lives in your status bar."
+    },
+    {
+      "id": "sw2",
+      "text": "Click it, and a list opens at the top."
+    },
+    {
+      "id": "sw3",
+      "text": "Pick an account, or Other AI."
+    },
+    {
+      "id": "sw4",
+      "text": "A fresh Claude tab opens on it. No reload.",
+      "pause": 0.5
+    },
+    {
+      "id": "ac1",
+      "text": "Use more than one Claude account?"
+    },
+    {
+      "id": "ac2",
+      "text": "Click Add Claude account, and give it a name."
+    },
+    {
+      "id": "ac3",
+      "text": "Log in once. Each account keeps its own login."
+    },
+    {
+      "id": "ac4",
+      "text": "Rename them anytime, like Work or Personal.",
+      "pause": 0.5
+    },
+    {
+      "id": "ch1",
+      "text": "Your chats travel with you."
+    },
+    {
+      "id": "ch2",
+      "text": "Switch accounts, type slash resume,"
+    },
+    {
+      "id": "ch3",
+      "text": "and pick up exactly where you stopped.",
+      "pause": 0.5
+    },
+    {
+      "id": "co1",
+      "text": "Hit a limit in the middle of a task?"
+    },
+    {
+      "id": "co2",
+      "text": "Choose Continue a chat. Pick the chat, then pick where."
+    },
+    {
+      "id": "co3",
+      "text": "Messages, code changes and results all come along.",
+      "pause": 0.5
+    },
+    {
+      "id": "oa1",
+      "text": "Want other AI models in the same panel?"
+    },
+    {
+      "id": "oa2",
+      "text": "Open Settings, then AI Providers."
+    },
+    {
+      "id": "oa3",
+      "text": "Add a key for OpenRouter, Gemini, DeepSeek or G L M."
+    },
+    {
+      "id": "oa4",
+      "text": "Free or paid, it's your choice."
+    },
+    {
+      "id": "oa5",
+      "text": "Click Test and save. Hoppy checks it live."
+    },
+    {
+      "id": "oa6",
+      "text": "And your key stays on your machine.",
+      "pause": 0.5
+    },
+    {
+      "id": "mo1",
+      "text": "In Models, choose exactly what shows up."
+    },
+    {
+      "id": "mo2",
+      "text": "See the price, the size, and which models read images."
+    },
+    {
+      "id": "mo3",
+      "text": "Pick a main model, and a helper for small jobs.",
+      "pause": 0.5
+    },
+    {
+      "id": "bk1",
+      "text": "Backups keep you moving."
+    },
+    {
+      "id": "bk2",
+      "text": "If a model is busy or out of requests,"
+    },
+    {
+      "id": "bk3",
+      "text": "the next one takes over automatically.",
+      "pause": 0.5
+    },
+    {
+      "id": "so1",
+      "text": "Staying with Claude?"
+    },
+    {
+      "id": "so2",
+      "text": "Ask another AI for a second opinion, right in the chat.",
+      "pause": 0.5
+    },
+    {
+      "id": "sa1",
+      "text": "Hoppy never touches your Claude login."
+    },
+    {
+      "id": "sa2",
+      "text": "And Claude is never billed twice.",
+      "pause": 0.7
+    },
+    {
+      "id": "out1",
+      "text": "Hoppy for Claude Code."
+    },
+    {
+      "id": "out2",
+      "text": "Out of tokens? Hoppy hops.",
+      "pause": 0.4
+    },
+    {
+      "id": "out3",
+      "text": "Free now, on the VS Code Marketplace."
+    }
+  ]
+}

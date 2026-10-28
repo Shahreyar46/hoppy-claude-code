@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+:root {
+  --vscode-font-family: Segoe UI, sans-serif; --vscode-font-size: 13px; --vscode-foreground: #cccccc; --vscode-editor-background: #1e1e1e;
+  --vscode-panel-border: #3c3c3c; --vscode-button-foreground: #fff; --vscode-button-background: #0e639c; --vscode-button-hoverBackground: #1177bb;
+  --vscode-button-secondaryForeground: #fff; --vscode-button-secondaryBackground: #3a3d41; --vscode-button-secondaryHoverBackground: #45494e;
+  --vscode-focusBorder: #007fd4; --vscode-input-foreground: #ccc; --vscode-input-background: #3c3c3c; --vscode-descriptionForeground: #9d9d9d;
+  --vscode-badge-background: #4d4d4d; --vscode-badge-foreground: #fff; --vscode-editorWarning-foreground: #cca700; --vscode-errorForeground: #f48771;
+  --vscode-inputValidation-infoBackground: #063b49; --vscode-inputValidation-infoBorder: #007acc; --vscode-editor-font-family: Consolas;
+}
+</style>
+<link rel="stylesheet" href="../media/settings.css">
+</head>
+<body>
+<div id="app" data-icon="../media/icon.svg"></div>
+<script>
+window.sent = [];
+window.acquireVsCodeApi = () => ({ postMessage: (m) => window.sent.push(m), getState: () => ({}), setState: () => {} });
+</script>
+<script src="../media/settings.js"></script>
+<script>
+const catalog = [
+  { selector: 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free', provider: 'openrouter', name: 'Nemotron 3 Ultra (free)', free: true, priceIn: 0, priceOut: 0, ctx: 1000000, vision: false },
+  { selector: 'openrouter/nvidia/nemotron-3.5-super-vl:free', provider: 'openrouter', name: 'Nemotron 3.5 Super VL (free)', free: true, priceIn: 0, priceOut: 0, ctx: 1000000, vision: true },
+  { selector: 'openrouter/poolside/laguna-s-2.1:free', provider: 'openrouter', name: 'Laguna S 2.1 (free)', free: true, priceIn: 0, priceOut: 0, ctx: 262144, vision: false },
+  { selector: 'openrouter/xiaomi/mimo-v2.6-pro', provider: 'openrouter', name: 'MiMo v2.6 Pro', free: false, priceIn: 0.435, priceOut: 0.87, ctx: 1048576, vision: false },
+  { selector: 'openrouter/deepseek/deepseek-v4-flash', provider: 'openrouter', name: 'DeepSeek V4 Flash', free: false, priceIn: 0.091, priceOut: 0.182, ctx: 1048576, vision: false },
+  { selector: 'gemini/gemini-3.8-flash', provider: 'gemini', name: 'Gemini 3.8 Flash', free: true, ctx: 1048576, vision: true },
+];
+window.postMessage({
+  type: 'state', ccrReady: true, gateway: true,
+  targets: [
+    { kind: 'claude', dir: 'C:\\Users\\dev\\.claude', label: 'Work (Max)', title: 'Claude · Work (Max)', email: 'dev@company.com', loggedIn: true, current: false },
+    { kind: 'claude', dir: 'C:\\Users\\dev\\.claude-account2', label: 'Personal', title: 'Claude · Personal', email: 'dev@gmail.com', loggedIn: true, current: true },
+    { kind: 'other', dir: 'C:\\Users\\dev\\.claude-router', label: 'Other AI', title: 'Other AI', loggedIn: true, current: false },
+  ],
+  providers: [
+    { id: 'openrouter', label: 'OpenRouter', note: 'Recommended. Free models + DeepSeek, GLM, MiMo, Kimi with one key', keyUrl: 'https://openrouter.ai/settings/keys', enabled: true, keyHint: '9c1b', savedKey: true, models: ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'poolside/laguna-s-2.1:free'] },
+    { id: 'gemini', label: 'Google Gemini', note: 'Free tier, separate daily quota', keyUrl: 'https://aistudio.google.com/apikey', enabled: true, keyHint: 'HsfE', savedKey: false, models: ['gemini-3.8-flash'] },
+    { id: 'deepseek', label: 'DeepSeek', note: 'Paid (prepaid balance)', keyUrl: 'https://platform.deepseek.com/api_keys', enabled: false, keyHint: null, savedKey: true, models: [] },
+    { id: 'glm', label: 'GLM (Z.ai)', note: 'Paid or GLM Coding Plan', keyUrl: 'https://z.ai/manage-apikey/apikey-list', enabled: false, keyHint: null, savedKey: false, models: [] },
+  ],
+  catalog,
+  mainModel: 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free', smallModel: 'openrouter/nvidia/nemotron-3.5-super-vl:free',
+  quota: { remaining: 44, limit: 50 },
+  fallback: ['openrouter/nvidia/nemotron-3.5-super-vl:free', 'openrouter/poolside/laguna-s-2.1:free', 'openrouter/google/gemma-4-31b-it:free', 'gemini/gemini-3.8-flash'],
+}, '*');
+</script>
+</body>
+</html>

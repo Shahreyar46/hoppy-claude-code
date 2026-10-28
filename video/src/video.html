@@ -1,0 +1,789 @@
+<title>Hoppy for Claude Code · overview</title>
+<!--
+  Hoppy for Claude Code: overview + tutorial film (16:9, ~2:00).
+  Every beat hangs off the voiceover (audio/timings.json). Imagery: rebuilt VS Code UI, icons and a
+  faceless bunny silhouette only (no faces on creatures, no people). Sound: SFX only, no music.
+-->
+<style>
+  :root{--bg:#0d0e12;--ink:#F3F1EC;--mute:#8b8f98;--line:#2a2d35;--card:#16181e;--card2:#1c1f26;
+        --peach:#FFC27A;--coral:#FF6B8B;--ok:#3fb950;--err:#ff5f57;--blue:#3794ff;--sel:#04395e}
+  #stage{color:var(--ink);font-family:Geist}
+  .scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .qt,.sol,.sol div,.bubble{white-space:normal}
+  .sol{flex:none}
+  .abs{position:absolute}
+  .grad{background:linear-gradient(135deg,var(--peach),var(--coral));-webkit-background-clip:text;background-clip:text;color:transparent}
+  /* window */
+  .win{position:relative;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 40px 120px -30px rgba(0,0,0,.75);overflow:hidden}
+  .tb{height:54px;display:flex;align-items:center;gap:10px;padding:0 22px;border-bottom:1px solid var(--line);background:#121419}
+  .tb i{width:13px;height:13px;border-radius:50%;display:block}
+  .tb b{margin-left:14px;font:500 22px Geist;color:var(--mute)}
+  .sb{position:absolute;left:0;right:0;bottom:0;height:40px;background:#007acc;display:flex;align-items:center;justify-content:flex-end;padding-right:16px}
+  .sbi{display:flex;align-items:center;gap:8px;font:600 21px Geist;color:#fff;padding:4px 14px;border-radius:6px}
+  /* cards / chips / text */
+  .card{background:var(--card2);border:1px solid var(--line);border-radius:16px}
+  .chip{display:inline-flex;align-items:center;gap:8px;font:600 24px Geist;padding:8px 18px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+  .ok{color:var(--ok);border-color:rgba(63,185,80,.5);background:rgba(63,185,80,.1)}
+  .warn{color:#f5a524;border-color:rgba(245,165,36,.5);background:rgba(245,165,36,.1)}
+  .bad{color:var(--err);border-color:rgba(255,95,87,.5);background:rgba(255,95,87,.1)}
+  .info{color:var(--blue);border-color:rgba(55,148,255,.5);background:rgba(55,148,255,.1)}
+  .mono{font-family:'Geist Mono'}
+  .h1{font:700 104px Geist;letter-spacing:-.035em;line-height:1.02}
+  .h2{font:700 64px Geist;letter-spacing:-.03em;line-height:1.08}
+  .muted{color:var(--mute)}
+  .row{display:flex;align-items:center}
+  .col{display:flex;flex-direction:column}
+  .av{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 22px Geist;color:#fff;flex:none}
+  .bubble{font:400 26px Geist;padding:16px 22px;border-radius:18px;max-width:560px;line-height:1.35}
+  .me{background:#0e639c;color:#fff;align-self:flex-end}
+  .ai{background:var(--card2);border:1px solid var(--line)}
+  .codeln{height:16px;border-radius:8px;background:#2b2e37;margin:12px 0;transform-origin:0 50%}
+  .btn{font:600 24px Geist;padding:12px 22px;border-radius:10px;background:#0e639c;color:#fff;white-space:nowrap}
+  .ghost{background:#2b2e37}
+  .tile{width:62px;height:62px;border-radius:14px;display:flex;align-items:center;justify-content:center;font:700 22px 'Geist Mono';flex:none}
+  .qp{position:absolute;left:50%;top:70px;width:760px;transform-origin:50% 0;background:#202329;border:1px solid #3a3d46;border-radius:14px;box-shadow:0 30px 70px -10px rgba(0,0,0,.7);padding:12px}
+  .qpi{display:flex;align-items:center;gap:14px;font:500 25px Geist;padding:11px 14px;border-radius:9px}
+  .qpi .d{margin-left:auto;font-size:21px;color:var(--mute)}
+  .sep{height:1px;background:#3a3d46;margin:8px 4px}
+  /* overlays */
+  #cap{position:absolute;left:0;right:0;bottom:46px;text-align:center;font:500 38px Geist;color:#e9e6e0;letter-spacing:-.01em;text-shadow:0 2px 18px rgba(0,0,0,.85)}
+  #chap{position:absolute;left:64px;top:52px;display:flex;align-items:center;gap:16px}
+  #chap .n{font:600 28px 'Geist Mono';color:var(--peach)}
+  #chap .t{font:600 32px Geist}
+  #chap .dots{display:flex;gap:7px;margin-left:10px}
+  #chap .dots i{width:11px;height:11px;border-radius:6px;background:#3a3d46;display:block}
+  #cursor{position:absolute;left:0;top:0;width:44px;height:44px;z-index:50;pointer-events:none}
+  #glow{position:absolute;inset:-20%;background:radial-gradient(closest-side at 50% 55%,rgba(255,107,139,.22),rgba(255,194,122,.08) 55%,transparent 75%)}
+</style>
+
+<div class="fill" id="world">
+  <div id="glow"></div>
+
+  <!-- 0 intro: a storm converges into the Hoppy icon + wordmark -->
+  <div class="scene" id="s0">
+    <div class="abs" id="clouds0" style="left:0;top:0;width:1920px;height:1080px"></div>
+    <div class="abs" id="shards0" style="left:0;top:0;width:1920px;height:1080px"></div>
+    <svg class="abs" id="bolts0" width="1920" height="1080" style="left:0;top:0;overflow:visible"></svg>
+    <div class="abs" id="ring0" style="left:0;top:0;width:1920px;height:1080px"></div>
+    <div class="abs" id="spark0" style="left:0;top:0;width:1920px;height:1080px"></div>
+    <div class="col" id="lock0" style="align-items:center;gap:34px">
+      <div class="row" style="gap:44px">
+        <div id="logo0" style="width:210px;height:210px;border-radius:54px;background:linear-gradient(135deg,#FFC27A,#FF6B8B);display:flex;align-items:center;justify-content:center;box-shadow:0 30px 110px -10px rgba(255,107,139,.75)"></div>
+        <div class="col"><div class="h1" id="wm0" style="font-size:168px">Hoppy</div><div id="sub0" style="font:500 48px Geist;color:var(--mute);margin-top:2px">for Claude Code</div></div>
+      </div>
+      <div id="meet0" style="font:700 40px Geist;letter-spacing:.32em;color:var(--peach)">MEET HOPPY</div>
+    </div>
+    <div class="abs" id="flash0" style="left:0;top:0;width:1920px;height:1080px;background:#fff;opacity:0"></div>
+  </div>
+
+  <!-- 1 questions -->
+  <div class="scene" id="s1">
+    <div class="abs mono" id="qn1" style="left:0;right:0;top:140px;text-align:center;font-size:32px;color:var(--peach)"></div>
+    <div class="row" style="gap:90px;align-items:center">
+      <div style="position:relative;width:860px;height:420px">
+        <div class="abs h1 qt" id="qt1" style="font-size:84px;width:860px;line-height:1.08">Ran out of Claude tokens in the middle of a task?</div>
+        <div class="abs h1 qt" id="qt2" style="font-size:84px;width:860px;line-height:1.08">Juggling more than one Claude account?</div>
+        <div class="abs h1 qt" id="qt3" style="font-size:84px;width:860px;line-height:1.08">Lost your session, and all its context?</div>
+        <div class="abs h1 qt" id="qt4" style="font-size:84px;width:860px;line-height:1.08">Wish you could use other AI models too?</div>
+      </div>
+      <div style="position:relative;width:620px;height:460px;zoom:1.2">
+        <div class="abs card" id="v1" style="left:0;top:40px;width:620px;padding:30px">
+          <div class="row" style="gap:14px;font:700 30px Geist"><span>✦</span>Claude · Work</div>
+          <div class="muted" style="font-size:24px;margin:18px 0 10px">Tokens left</div>
+          <div style="height:22px;border-radius:11px;background:#2b2e37;overflow:hidden"><div id="meter1" style="height:100%;width:100%;background:linear-gradient(90deg,#FFC27A,#FF6B8B)"></div></div>
+          <div class="mono" id="meterN1" style="font-size:34px;margin-top:10px">100%</div>
+          <div class="card" id="lim1" style="margin-top:22px;padding:18px 22px;border-color:rgba(255,95,87,.6);background:#2a1517;font:700 28px Geist;color:#ff8a80">✕ Usage limit reached</div>
+        </div>
+        <div class="abs col" id="v2" style="left:0;top:40px;width:620px;gap:20px;align-items:center">
+          <div class="card row" style="width:520px;padding:20px;gap:18px"><div class="av" style="background:#d18616">W</div><div style="font:700 30px Geist">Work account</div></div>
+          <div class="row" style="gap:16px;font:600 26px Geist;color:#f5a524" id="loop2"><span id="loopI2"></span>log out · log in · repeat</div>
+          <div class="card row" style="width:520px;padding:20px;gap:18px"><div class="av" style="background:#d18616">P</div><div style="font:700 30px Geist">Personal account</div></div>
+        </div>
+        <div class="abs col" id="v3" style="left:0;top:20px;width:620px;gap:16px">
+          <div class="bubble me b3" style="font-size:26px">Add dark mode to settings</div>
+          <div class="bubble ai b3" style="font-size:26px">Done. Theme toggle added.</div>
+          <div class="bubble me b3" style="font-size:26px">Now update the tests</div>
+          <span class="chip bad" id="lost3" style="align-self:flex-start;font-size:28px">✕ Context lost</span>
+        </div>
+        <div class="abs" id="v4" style="left:0;top:40px;width:620px">
+          <div class="row" style="gap:20px;flex-wrap:wrap" id="tiles4"></div>
+          <span class="chip" id="lock4" style="margin-top:26px;font-size:26px"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 the fix -->
+  <div class="scene" id="s2">
+    <div class="col" style="align-items:center;gap:56px">
+      <div class="row" style="gap:28px" id="fixT">
+        <div id="logo2" style="width:120px;height:120px;border-radius:32px;background:linear-gradient(135deg,#FFC27A,#FF6B8B);display:flex;align-items:center;justify-content:center"></div>
+        <div class="h1" style="font-size:92px">Here's the fix.</div>
+      </div>
+      <div class="row" style="gap:30px;align-items:stretch">
+        <div class="card col sol" id="sol1" style="width:500px;padding:36px;gap:18px"><div class="tile" id="solI1" style="width:76px;height:76px;background:rgba(255,194,122,.15)"></div><div style="font:700 36px Geist;line-height:1.2">All your Claude accounts, in one place</div></div>
+        <div class="card col sol" id="sol2" style="width:500px;padding:36px;gap:18px"><div class="tile" id="solI2" style="width:76px;height:76px;background:rgba(55,148,255,.15)"></div><div style="font:700 36px Geist;line-height:1.2">Other AI models, with your own keys</div></div>
+        <div class="card col sol" id="sol3" style="width:500px;padding:36px;gap:18px"><div class="tile" id="solI3" style="width:76px;height:76px;background:rgba(63,185,80,.15)"></div><div style="font:700 36px Geist;line-height:1.2">Chats and context, never lost</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 install -->
+  <div class="scene" id="s3">
+    <div class="win" style="width:1300px;height:720px;zoom:1.2">
+      <div class="tb"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><b>Visual Studio Code</b></div>
+      <div class="row" style="align-items:stretch;height:666px">
+        <div style="width:520px;border-right:1px solid var(--line);padding:24px;position:relative">
+          <div style="font:600 22px Geist;letter-spacing:.06em;color:var(--mute)">EXTENSIONS: MARKETPLACE</div>
+          <div class="card row" id="srch3" style="margin-top:14px;padding:12px 16px;gap:12px;font:500 24px Geist;border-color:#0e639c;background:#121419"><span id="srchI3"></span><span id="srchT3"></span></div>
+          <div class="card abs" id="ext3" style="left:24px;right:24px;top:150px;padding:18px;border-color:#0e639c">
+            <div class="row" style="gap:16px">
+              <div id="extIco" style="width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#FFC27A,#FF6B8B);display:flex;align-items:center;justify-content:center;flex:none"></div>
+              <div><div style="font:700 25px Geist">Hoppy for Claude Code</div><div class="muted" style="font-size:20px;margin-top:2px">Out of tokens? Hoppy hops.</div><div style="font:600 19px Geist;margin-top:4px;color:#c9c9c9">Shahreyar Shimul</div></div>
+            </div>
+            <div class="row" style="justify-content:flex-end;margin-top:6px"><div class="btn" id="ibtn3" style="font-size:21px;padding:8px 18px">Install</div></div>
+          </div>
+          <div class="abs col" id="sk3" style="left:24px;right:24px;top:330px;gap:14px"><div class="card" style="height:86px;opacity:.45"></div><div class="card" style="height:86px;opacity:.3"></div><div class="card" style="height:86px;opacity:.18"></div></div>
+        </div>
+        <div style="flex:1;position:relative">
+          <div class="card abs" id="guide3" style="left:40px;right:40px;top:40px;bottom:40px;padding:34px">
+            <div style="font:700 38px Geist">Get started with Hoppy</div>
+            <div class="muted" style="font-size:24px;margin:8px 0 22px">5 short steps</div>
+            <div id="steps3" class="col" style="gap:16px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 switch -->
+  <div class="scene" id="s4">
+    <div class="win" id="w4" style="width:1500px;height:780px">
+      <div class="tb"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><b>Visual Studio Code</b></div>
+      <div class="row abs" id="tabs4" style="left:0;right:0;top:54px;height:56px;border-bottom:1px solid var(--line);padding-left:20px;gap:6px">
+        <div class="row" style="gap:10px;font:500 22px Geist;padding:0 18px;height:56px;color:var(--mute)">✦ Claude · Work</div>
+        <div class="row" id="newtab4" style="gap:10px;font:600 22px Geist;padding:0 18px;height:56px;border-bottom:3px solid var(--peach)">✦ Claude · Personal</div>
+      </div>
+      <div class="abs" id="lines4" style="left:60px;top:150px;width:700px"></div>
+      <div class="qp" id="qp4" style="margin-left:-380px">
+        <div style="text-align:center;font:600 22px Geist;margin:4px 0 10px">Hoppy</div>
+        <div class="card" style="font:400 22px Geist;color:var(--mute);padding:10px 14px;margin-bottom:8px;background:#16181e;border-color:#0e639c">Switch the Claude panel, or pick an action</div>
+        <div class="qpi" id="q4a"><span>✦</span>Claude · Work<span class="d" style="color:var(--ok)">✓ in use</span></div>
+        <div class="qpi" id="q4b"><span>✦</span>Claude · Personal<span class="d">me@gmail.com</span></div>
+        <div class="qpi" id="q4c"><span id="q4cIco"></span>Other AI<span class="d">models from your API keys</span></div>
+        <div class="sep"></div>
+        <div class="qpi muted">Continue a chat on another account…</div>
+        <div class="qpi muted">Settings</div>
+      </div>
+      <svg class="abs" width="1500" height="780" style="left:0;top:0"><path id="arr4" d="M1300 735 C 1420 580, 1400 300, 1150 230" fill="none" stroke="#FFC27A" stroke-width="5" stroke-linecap="round" stroke-dasharray="3 14"/></svg>
+      <div class="sb"><div class="sbi" id="sbi4"><span>✦</span><span id="sbt4">Claude · Work</span></div></div>
+      <div class="abs chip" id="stamp4" style="right:120px;top:190px;font:800 46px Geist;padding:14px 30px;border:4px solid var(--peach);color:var(--peach);background:rgba(13,14,18,.8);transform:rotate(-8deg)">No reload</div>
+    </div>
+  </div>
+
+  <!-- 5 accounts -->
+  <div class="scene" id="s5">
+    <div class="row" style="gap:70px;align-items:center;zoom:1.12"><div class="col" style="width:900px;gap:22px" id="acc5">
+      <div style="font:600 26px Geist;letter-spacing:.08em;color:var(--mute)">CLAUDE ACCOUNTS</div>
+      <div class="card row" id="a5a" style="padding:22px 26px;gap:22px;border-color:var(--blue)">
+        <div class="av" style="background:#d18616" id="av5a">M</div>
+        <div><div style="font:700 32px Geist" id="nm5a">main</div><div class="muted" style="font-size:24px">you@company.com</div></div>
+        <span class="chip info" style="margin-left:auto">in use</span>
+      </div>
+      <div class="card row" id="a5b" style="padding:22px 26px;gap:22px">
+        <div class="av" style="background:#d18616">P</div>
+        <div><div style="font:700 32px Geist" id="nm5b"></div><div class="muted" style="font-size:24px">me@gmail.com</div></div>
+        <span class="chip ok" style="margin-left:auto" id="li5">✓ logged in</span>
+      </div>
+      <div class="row" id="add5" style="justify-content:center;gap:12px;padding:22px;border:2px dashed #3794ff;border-radius:16px;color:#3794ff;font:600 28px Geist">＋ Add Claude account</div>
+      </div><div style="position:relative;width:420px;height:560px"><div class="card abs" id="login5" style="left:0;top:0;width:420px;padding:34px;text-align:center">
+        <div id="loginIco" style="display:flex;justify-content:center;margin-bottom:16px"></div>
+        <div style="font:700 30px Geist">Log in to Claude</div>
+        <div class="muted" style="font-size:22px;margin:6px 0 22px">for account “Personal”</div>
+        <div class="btn" id="lbtn5" style="display:inline-block">Log in</div>
+      </div>
+      <div class="card abs" id="input5" style="left:0;top:360px;width:420px;padding:18px 22px;border-color:#0e639c">
+        <div class="muted" style="font-size:20px;margin-bottom:6px">Name this account</div>
+        <div style="font:600 30px Geist" id="typed5"></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 6 chats travel -->
+  <div class="scene" id="s6">
+    <div class="row" style="gap:140px;align-items:stretch;zoom:1.2">
+      <div class="win" style="width:560px;height:600px"><div class="tb"><b style="margin:0">✦ Claude · Work</b></div><div class="col" style="padding:26px;gap:16px" id="left6"></div></div>
+      <div class="win" style="width:640px;height:600px"><div class="tb"><b style="margin:0">✦ Claude · Personal</b></div>
+        <div class="col" style="padding:26px;gap:14px" id="right6"></div>
+        <div class="abs card mono" id="in6" style="left:24px;right:24px;bottom:24px;padding:16px 20px;font-size:28px;border-color:#0e639c"></div>
+      </div>
+    </div>
+    <div class="abs" id="fly6" style="left:0;top:0"></div>
+  </div>
+
+  <!-- 7 continue -->
+  <div class="scene" id="s7">
+    <div class="row" style="gap:120px;align-items:center;zoom:1.2">
+      <div class="win" style="width:600px;height:560px" id="w7a"><div class="tb"><b style="margin:0">✦ Claude · Work</b></div>
+        <div style="padding:30px"><div class="codeln" style="width:80%"></div><div class="codeln" style="width:60%"></div><div class="codeln" style="width:72%"></div><div class="codeln" style="width:50%"></div></div>
+        <div class="abs card" id="lim7" style="left:30px;right:30px;bottom:30px;padding:20px;border-color:rgba(255,95,87,.6);background:#2a1517;font:700 26px Geist;color:#ff8a80">⚠ Usage limit reached</div>
+      </div>
+      <div class="col" style="gap:18px;width:600px">
+        <div class="card" id="p7" style="padding:12px;background:#202329">
+          <div class="qpi" id="p7a">↻ Continue a chat on another account…</div>
+          <div class="qpi" id="p7b">“Add dark mode to settings”<span class="d">Claude · Work</span></div>
+          <div class="qpi" id="p7c"><span id="p7cIco"></span>Other AI<span class="d">continue here</span></div>
+        </div>
+        <div id="stack7" class="col" style="gap:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 providers -->
+  <div class="scene" id="s8">
+    <div class="col" style="gap:26px;width:1440px;zoom:1.15">
+      <div class="row" style="gap:16px"><div style="font:700 44px Geist">Settings</div><div class="muted" style="font:500 30px Geist">›</div><div style="font:700 44px Geist" class="grad">AI Providers</div>
+        <span class="chip" id="free8" style="margin-left:auto">Free</span><span class="chip" id="paid8">Paid</span></div>
+      <div class="row" style="gap:24px;align-items:stretch" id="prov8"></div>
+      <div class="card" id="key8" style="padding:24px 28px">
+        <div class="row" style="gap:16px">
+          <div class="card mono" style="flex:1;padding:16px 20px;font-size:28px;background:#121419;border-color:#0e639c" id="keytxt8"></div>
+          <div class="btn" id="test8">Test &amp; save</div>
+        </div>
+        <div class="row" style="gap:26px;margin-top:18px">
+          <span class="chip ok" id="ok8">✓ OpenRouter OK · 50/50 free left today</span>
+          <span class="chip" id="lock8" style="margin-left:auto"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 models -->
+  <div class="scene" id="s9">
+    <div class="col" style="gap:20px;width:1400px;zoom:1.15">
+      <div class="row" style="gap:18px"><div style="font:700 44px Geist" class="grad">Models</div>
+        <div class="row" style="margin-left:auto;gap:12px;font:500 26px Geist"><div id="tog9" style="width:62px;height:34px;border-radius:17px;background:#0e639c;position:relative"><div id="knob9" style="position:absolute;top:4px;width:26px;height:26px;border-radius:13px;background:#fff"></div></div>Free only</div></div>
+      <div class="card" style="padding:8px 0" id="list9"></div>
+      <div class="row" style="gap:24px">
+        <div class="card" style="flex:1;padding:18px 22px" id="main9"><div class="muted" style="font-size:22px">Main model</div><div style="font:700 30px Geist;margin-top:4px" id="mainv9"></div></div>
+        <div class="card" style="flex:1;padding:18px 22px" id="help9"><div class="muted" style="font-size:22px">Helper model · small jobs</div><div style="font:700 30px Geist;margin-top:4px" id="helpv9"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 backups -->
+  <div class="scene" id="s10">
+    <div class="row" style="gap:120px;align-items:center;zoom:1.15">
+      <div class="col" style="gap:8px;width:520px"><div class="h2">Backups</div><div class="muted" style="font:500 34px Geist;width:520px;line-height:1.3;white-space:normal">Tried top to bottom when a model is busy or out of requests.</div></div>
+      <div class="col" style="gap:22px;position:relative" id="chain10"></div>
+    </div>
+  </div>
+
+  <!-- 11 second opinion -->
+  <div class="scene" id="s11">
+    <div class="win" style="width:1200px;height:640px;zoom:1.2"><div class="tb"><b style="margin:0">✦ Claude · Work</b></div>
+      <div class="col" style="padding:36px 44px;gap:22px">
+        <div class="bubble me" id="q11" style="font-size:30px"></div>
+        <div class="row" style="gap:18px;align-items:flex-start" id="a11">
+          <div class="tile" style="background:rgba(255,107,139,.15);color:var(--coral)">✦</div>
+          <div class="card" style="padding:22px 26px;flex:1">
+            <div style="font:700 28px Geist;margin-bottom:12px">Second opinion from Nemotron</div>
+            <div class="col" style="gap:10px;font:500 26px Geist" id="ans11"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 trust -->
+  <div class="scene" id="s12">
+    <div class="row" style="gap:90px;align-items:center">
+      <div id="shield12"></div>
+      <div class="col" style="gap:30px">
+        <div class="row" style="gap:20px" id="t12a"><span id="t12aI"></span><span class="h2" style="font-size:58px">Your Claude login, untouched</span></div>
+        <div class="row" style="gap:20px" id="t12b"><span id="t12bI"></span><span class="h2" style="font-size:58px">Never billed twice</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 CTA -->
+  <div class="scene" id="s13">
+    <div class="col" style="align-items:center;gap:38px">
+      <div class="row" style="gap:40px">
+        <div id="logo13" style="width:170px;height:170px;border-radius:44px;background:linear-gradient(135deg,#FFC27A,#FF6B8B);display:flex;align-items:center;justify-content:center;box-shadow:0 30px 80px -20px rgba(255,107,139,.6)"></div>
+        <div class="col"><div class="h1" id="wm13" style="font-size:140px">Hoppy</div><div style="font:500 42px Geist;color:var(--mute)">for Claude Code</div></div>
+      </div>
+      <div class="h2" id="tag13" style="font-size:60px">Out of tokens? <span class="grad">Hoppy hops.</span></div>
+      <div class="chip" id="pill13" style="font:700 40px Geist;padding:18px 40px;border:2px solid var(--peach);color:var(--peach)">Free on the VS Code Marketplace</div>
+      <div class="card row" id="srch13" style="padding:14px 22px;gap:14px;font:500 32px Geist;background:#121419;border-color:#0e639c"><span id="srchI13"></span>Hoppy for Claude Code</div>
+    </div>
+  </div>
+
+  <div id="chap"><span class="n" id="chapN"></span><span class="t" id="chapT"></span><span class="dots" id="chapD"></span></div>
+  <div id="cap"></div>
+  <div id="cursor"></div>
+</div>
+<div class="vignette"></div>
+
+<script>
+/* ---------------- setup ---------------- */
+const W = 1920, H = 1080;
+const L = M.line, w = M.word, $ = M.$;
+const END = M.VO.duration + 2.4;
+
+// faceless bunny silhouette (same shapes as the extension icon), white by default
+const BUN = (size, fill = '#fff', far = '#FFE1EA') => `<svg width="${size}" height="${size}" viewBox="0 0 256 256"><g transform="rotate(-12 128 140)">
+  <g fill="${far}"><ellipse cx="146" cy="60" rx="12" ry="40" transform="rotate(-30 146 60)"/><ellipse cx="74" cy="188" rx="30" ry="11" transform="rotate(18 74 188)"/><ellipse cx="176" cy="182" rx="12" ry="8" transform="rotate(35 176 182)"/></g>
+  <g fill="${fill}"><ellipse cx="166" cy="56" rx="13" ry="42" transform="rotate(-12 166 56)"/><ellipse cx="116" cy="152" rx="60" ry="44" transform="rotate(-14 116 152)"/><circle cx="166" cy="110" r="34"/><ellipse cx="194" cy="120" rx="18" ry="15"/><circle cx="58" cy="138" r="17"/><ellipse cx="88" cy="194" rx="34" ry="13" transform="rotate(16 88 194)"/><ellipse cx="160" cy="186" rx="14" ry="9" transform="rotate(32 160 186)"/></g>
+  <ellipse cx="166" cy="58" rx="5.5" ry="28" transform="rotate(-12 166 58)" fill="#FFB3C7"/></g></svg>`;
+const SPARK = (s, c = '#fff') => `<svg width="${s}" height="${s}" viewBox="-10 -10 20 20"><path d="M0-9C1-3 3-1 9 0 3 1 1 3 0 9-1 3-3 1-9 0-3-1-1-3 0-9Z" fill="${c}"/></svg>`;
+
+// helper: element appear with spring (opacity + offset)
+const appear = (el, t, t0, {dx = 0, dy = 40, s0 = 1, rot = 0, sp = M.MORPH, fade = 0.14} = {}) => {
+  const k = M.sp(t, t0, sp);
+  el.style.opacity = M.clamp((t - t0) / fade);
+  el.style.transform = `translate(${(1 - k) * dx}px,${(1 - k) * dy}px) scale(${s0 + (1 - s0) * k}) rotate(${(1 - k) * rot}deg)`;
+  return k;
+};
+const hide = (el) => { el.style.opacity = 0; };
+
+/* scenes: [id, in, chapter title] */
+const S = (id, a) => ({ id, el: $(id), a });
+const SC = [
+  S('s0', 0), S('s1', L('q1').start - 0.35), S('s2', L('fix').start - 0.35), S('s3', L('inst1').start - 0.35),
+  S('s4', L('sw1').start - 0.35), S('s5', L('ac1').start - 0.35), S('s6', L('ch1').start - 0.35), S('s7', L('co1').start - 0.35),
+  S('s8', L('oa1').start - 0.35), S('s9', L('mo1').start - 0.35), S('s10', L('bk1').start - 0.35), S('s11', L('so1').start - 0.35),
+  S('s12', L('sa1').start - 0.35), S('s13', L('out1').start - 0.3),
+];
+SC.forEach((s, i) => (s.b = i < SC.length - 1 ? SC[i + 1].a : END + 1));
+SC.slice(1).forEach((s, i) => M.cue(s.a - 0.12, 'whoosh', { g: 0.42, d: 0.5, pan: i % 2 ? 0.35 : -0.35 }));
+
+/* chapters (scene 3..12) */
+const CH = [['s3', 'Install'], ['s4', 'Switch'], ['s5', 'Accounts'], ['s6', 'Shared chats'], ['s7', 'Keep going'], ['s8', 'AI providers'], ['s9', 'Models'], ['s10', 'Backups'], ['s11', 'Second opinion'], ['s12', 'Trust']];
+$('chapD').innerHTML = CH.map(() => '<i></i>').join('');
+const chapDots = [...$('chapD').children];
+const chapAt = (t) => { let c = -1; CH.forEach(([id], i) => { const s = SC.find((x) => x.id === id); if (t >= s.a) c = i; }); return t >= SC[13].a - 0.2 ? -1 : c; };
+CH.forEach(([id]) => M.cue(SC.find((x) => x.id === id).a + 0.25, 'tick', { g: 0.35, pan: -0.6 }));
+
+/* captions: the spoken line, cleaned for reading */
+const CAP = (s) => s.replace('V S I X', 'VSIX').replace('G L M', 'GLM').replace('slash resume', '/resume');
+
+/* ---------- 0 intro: storm -> icon + wordmark ---------- */
+const tForm = 4.55;                                  // everything collapses into the icon here
+const tMeet = w('meet', 'hoppy');
+$('logo0').innerHTML = BUN(170); $('logo2').innerHTML = BUN(96); $('logo13').innerHTML = BUN(136); $('extIco').innerHTML = BUN(60);
+const wm0 = M.split($('wm0'), 'chars');
+const CX = 960, CY = 470;                            // storm eye, roughly where the icon sits
+const rr = M.rand(21);
+// storm clouds: big soft puffs that swirl in from the edges
+const CLOUD_C = ['rgba(255,107,139,.30)', 'rgba(255,194,122,.26)', 'rgba(120,130,160,.28)', 'rgba(255,107,139,.22)'];
+const CLOUDS = Array.from({ length: 9 }, (_, i) => ({ a: (i / 9) * Math.PI * 2 + rr() * 0.4, s: 620 + rr() * 520, c: CLOUD_C[i % 4], r0: 1150 + rr() * 300 }));
+$('clouds0').innerHTML = CLOUDS.map((c) => `<div style="position:absolute;width:${c.s}px;height:${c.s * 0.62}px;border-radius:50%;background:radial-gradient(closest-side,${c.c},transparent)"></div>`).join('');
+const cloudEls = [...$('clouds0').children];
+// shards: glowing fragments spiralling into the eye
+const SH_C = ['#FFC27A', '#FF6B8B', '#ffffff', '#FFB3C7'];
+const SHARDS = Array.from({ length: 90 }, (_, i) => ({ a: rr() * Math.PI * 2, r0: 1100 + rr() * 500, ts: 0.15 + rr() * 1.6, ta: tForm - 0.12 + rr() * 0.1, sz: 8 + rr() * 22, c: SH_C[i % 4], spin: (rr() - 0.5) * 8, swirl: 2.2 + rr() * 1.6 }));
+$('shards0').innerHTML = SHARDS.map((s) => `<div style="position:absolute;width:${s.sz}px;height:${s.sz * 0.55}px;background:${s.c};clip-path:polygon(0 50%,40% 0,100% 30%,70% 100%);box-shadow:0 0 18px ${s.c}"></div>`).join('');
+const shardEls = [...$('shards0').children];
+// lightning: jagged bolts from the edges towards the eye
+const BOLT_T = [0.75, 1.45, 2.2, 2.85, 3.45, 4.05];
+const boltPath = (seed) => {
+  const r = M.rand(seed), side = Math.floor(r() * 4);
+  let x = side === 0 ? r() * 1920 : side === 1 ? 1920 : side === 2 ? r() * 1920 : 0;
+  let y = side === 0 ? 0 : side === 1 ? r() * 1080 : side === 2 ? 1080 : r() * 1080;
+  let d = `M${x.toFixed(0)} ${y.toFixed(0)}`;
+  for (let k = 1; k <= 9; k++) { const u = k / 9; const tx = M.lerp(x, CX, u * 0.75) + (r() - 0.5) * 140, ty = M.lerp(y, CY, u * 0.75) + (r() - 0.5) * 140; d += ` L${tx.toFixed(0)} ${ty.toFixed(0)}`; }
+  return d;
+};
+$('bolts0').innerHTML = BOLT_T.map((_, i) => `<g class="bolt"><path d="${boltPath(40 + i)}" fill="none" stroke="#FFC27A" stroke-width="16" stroke-linejoin="round" opacity=".35"/><path d="${boltPath(40 + i)}" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></g>`).join('');
+const bolts = [...$('bolts0').querySelectorAll('.bolt')];
+// sound: a rising storm that implodes into a hit
+M.cue(0.05, 'whoosh', { g: 0.35, d: 4.2, exact: true });
+M.cue(tForm, 'riser', { g: 0.5, d: 3.6 });
+BOLT_T.forEach((b, i) => { M.cue(b, 'impact', { g: 0.32 + i * 0.03, pan: (i % 2 ? 0.5 : -0.5) }); M.cue(b, 'glitch', { g: 0.3 }); M.cue(b + 0.02, 'sub', { g: 0.35 }); });
+M.cue(tForm, 'suck', { g: 0.55, d: 0.7 });
+M.cue(tForm + 0.02, 'impact', { g: 0.9 }); M.cue(tForm + 0.02, 'sub', { g: 0.9 }); M.cue(tForm + 0.08, 'reveal', { g: 0.75 });
+M.cue(tForm + 0.35, 'shimmer', { g: 0.5 }); M.cue(tMeet, 'chime', { g: 0.45 });
+
+/* ---------- 1 questions ---------- */
+const QID = ['q1', 'q2', 'q3', 'q4'];
+const qt = QID.map((id, i) => ({ el: $('qt' + (i + 1)), sp: M.split($('qt' + (i + 1))), times: M.words$(id), a: L(id).start - 0.25, b: i < 3 ? L(QID[i + 1]).start - 0.25 : L('fix').start - 0.3, v: $('v' + (i + 1)) }));
+$('loopI2').innerHTML = M.icon('arrow', 30, '#f5a524', 2.4);
+const PROV4 = [['OR', '#b180d7'], ['G', '#3794ff'], ['DS', '#89d185'], ['Z', '#d18616']];
+$('tiles4').innerHTML = PROV4.map(([m, c]) => `<div class="tile" style="width:130px;height:130px;font-size:36px;color:${c};background:${c}18;border:2px dashed ${c}66">${m}</div>`).join('');
+$('lock4').innerHTML = M.icon('lock', 26, '#8b8f98', 2.4) + ' Not in your Claude panel';
+const b3 = [...document.querySelectorAll('.b3')];
+const tTok = w('q1', 'tokens'), tTask = w('q1', 'task'), tAcc2 = w('q2', 'account'), tCtx = w('q3', 'context'), tToo = w('q4', 'too');
+qt.forEach((q, i) => { M.cue(q.a + 0.05, 'swish', { g: 0.45, pan: 0.3 }); M.cue(q.a + 0.15, 'tick', { g: 0.4, pan: -0.6 }); });
+M.cue(tTok - 0.2, 'roll', { g: 0.4, d: 1.0 }); M.cue(tTask, 'error', { g: 0.55 });
+M.cue(tAcc2, 'swipe', { g: 0.45 }); M.cue(tAcc2 + 0.3, 'error', { g: 0.35 });
+M.cue(tCtx, 'glitch', { g: 0.5 }); M.cue(tCtx + 0.1, 'error', { g: 0.4 });
+M.cue(tToo, 'thud', { g: 0.5 });
+
+/* ---------- 2 the fix ---------- */
+$('solI1').innerHTML = M.icon('user', 42, '#FFC27A', 2.2); $('solI2').innerHTML = M.icon('globe', 42, '#3794ff', 2.2); $('solI3').innerHTML = M.icon('clock', 42, '#3fb950', 2.2);
+const tFix = L('fix').start, tSol = [w('sol1', 'place'), w('sol2', 'keys'), w('sol3', 'lost')];
+M.cue(tFix - 0.05, 'impact', { g: 0.6 }); M.cue(tFix + 0.05, 'shimmer', { g: 0.45 });
+tSol.forEach((x, i) => M.cue(x - 0.15, 'pop', { g: 0.6, pan: -0.5 + i * 0.5 })); M.cue(tSol[2] + 0.2, 'success', { g: 0.6 });
+
+/* ---------- 3 install ---------- */
+const STEPS = ['Switch in one click', 'Add another Claude account', 'Connect other AI models', 'Hit a limit? Keep going', 'Optional extras'];
+$('steps3').innerHTML = STEPS.map((s) => `<div class="row" style="gap:16px;font:500 28px Geist"><span class="ck"></span>${s}</div>`).join('');
+const steps3 = [...$('steps3').children];
+const tSearch = w('inst2', 'search') + 0.15, SQ3 = 'Hoppy for Claude Code', tFound = tSearch + SQ3.length / 22 + 0.1, tIns3 = w('inst2', 'install') + 0.1, tGuide = w('inst3', 'guide');
+$('srchI3').innerHTML = M.icon('search', 24, '#8b8f98', 2.2);
+M.cue(tSearch - 0.25, 'click', { g: 0.5 }); for (let i = 0; i < SQ3.length; i += 2) M.cue(tSearch + i / 22, 'key', { g: 0.2, pitch: 1 + (i % 5) * 0.02 });
+M.cue(tFound, 'pop', { g: 0.6 }); M.cue(tIns3, 'click', { g: 0.65 }); M.cue(tIns3 + 0.6, 'success', { g: 0.55 }); M.cue(tGuide - 0.1, 'swish', { g: 0.5, pan: 0.4 });
+steps3.forEach((_, i) => M.cue(tGuide + 0.35 + i * 0.16, 'tick', { g: 0.35, pan: 0.4 }));
+
+/* ---------- 4 switch ---------- */
+$('lines4').innerHTML = [80, 64, 90, 55, 72, 84, 46].map((x) => `<div class="codeln" style="width:${x}%"></div>`).join('');
+$('q4cIco').innerHTML = M.icon('globe', 24, '#3794ff', 2.2);
+const tSb = w('sw1', 'bar'), tClick4 = w('sw2', 'click'), tList = w('sw2', 'top'), tPick4 = w('sw3', 'account'), tTab = w('sw4', 'tab'), tNoRel = w('sw4', 'reload');
+M.cue(tClick4, 'click', { g: 0.65, pan: 0.5 }); M.cue(tClick4 + 0.15, 'whoosh', { g: 0.35, d: 0.6, pan: 0.2 }); M.cue(tList, 'pop', { g: 0.5 });
+M.cue(tPick4, 'hover', { g: 0.4 }); M.cue(tPick4 + 0.55, 'click', { g: 0.6 }); M.cue(tTab, 'swipe', { g: 0.5 }); M.cue(tNoRel, 'stamp', { g: 0.7 });
+
+/* ---------- 5 accounts ---------- */
+$('loginIco').innerHTML = SPARK(70, '#FF6B8B');
+const tAdd5 = w('ac2', 'add'), tName5 = w('ac2', 'name'), tLog5 = w('ac3', 'log'), tOwn5 = w('ac3', 'login'), tRen5 = w('ac4', 'rename'), tWork5 = w('ac4', 'work');
+M.cue(L('ac1').start + 0.1, 'thud', { g: 0.45 }); M.cue(tAdd5, 'click', { g: 0.6 });
+'Personal'.split('').forEach((_, i) => M.cue(tName5 - 0.1 + i * 0.06, 'key', { g: 0.22, pitch: 1 + i * 0.02 }));
+M.cue(tLog5 + 0.1, 'click', { g: 0.55 }); M.cue(tOwn5, 'success', { g: 0.55 }); M.cue(tOwn5 + 0.1, 'thud', { g: 0.4 });
+M.cue(tRen5, 'pen', { g: 0.45, d: 0.4 }); M.cue(tWork5, 'snap', { g: 0.5 });
+
+/* ---------- 6 chats travel ---------- */
+const MSG6 = [['me', 'Add dark mode to the settings page'], ['ai', 'Added a theme toggle and dark tokens.'], ['me', 'Now update the tests']];
+$('left6').innerHTML = MSG6.map(([k, s]) => `<div class="bubble ${k}" style="font-size:24px;max-width:460px">${s}</div>`).join('');
+const left6 = [...$('left6').children];
+$('right6').innerHTML = MSG6.map(([k, s]) => `<div class="bubble ${k}" style="font-size:24px;max-width:520px">${s}</div>`).join('') + `<div class="bubble ai" style="font-size:24px;max-width:520px" id="cont6"></div>`;
+const right6 = [...$('right6').children];
+const tTravel = w('ch1', 'travel'), tRes = w('ch2', 'resume'), tStop = w('ch3', 'stopped');
+MSG6.forEach((_, i) => M.cue(tTravel + i * 0.22, 'swish', { g: 0.45, pan: 0.5 }));
+'/resume'.split('').forEach((_, i) => M.cue(tRes - 0.35 + i * 0.06, 'key', { g: 0.24 }));
+M.cue(tRes + 0.15, 'ding', { g: 0.45 }); M.cue(tStop - 0.2, 'success', { g: 0.45 });
+const CONT6 = 'Updating the tests now…';
+
+/* ---------- 7 continue ---------- */
+$('p7cIco').innerHTML = M.icon('globe', 24, '#3794ff', 2.2);
+const STACK7 = [['Messages', 'mail'], ['Code changes', 'code'], ['Results', 'check']];
+$('stack7').innerHTML = STACK7.map(([s, ic]) => `<div class="card row" style="padding:16px 22px;gap:16px;font:600 28px Geist"><span>${M.icon(ic, 30, '#FFC27A', 2.2)}</span>${s}<span style="margin-left:auto">${M.icon('check', 30, '#3fb950', 2.6)}</span></div>`).join('');
+const stack7 = [...$('stack7').children];
+const tLim7 = w('co1', 'limit'), tCont7 = w('co2', 'continue'), tChat7 = w('co2', 'chat', 'start'), tWhere7 = w('co2', 'where'), tAlong = [w('co3', 'messages'), w('co3', 'changes'), w('co3', 'results')];
+M.cue(tLim7, 'error', { g: 0.5 }); M.cue(tCont7, 'click', { g: 0.55 }); M.cue(tWhere7 - 0.6, 'click', { g: 0.5 }); M.cue(tWhere7, 'click', { g: 0.55 });
+tAlong.forEach((x, i) => M.cue(x, 'pop', { g: 0.5, pan: 0.3 })); M.cue(w('co3', 'along'), 'success', { g: 0.5 });
+
+/* ---------- 8 providers ---------- */
+const PROV = [['OR', 'OpenRouter', '#b180d7', 'openrouter'], ['G', 'Gemini', '#3794ff', 'gemini'], ['DS', 'DeepSeek', '#89d185', 'deepseek'], ['Z', 'GLM (Z.ai)', '#d18616', 'g']];
+$('prov8').innerHTML = PROV.map(([m, n, c]) => `<div class="card" style="flex:1;padding:24px;border-left:5px solid ${c}"><div class="row" style="gap:16px"><div class="tile" style="color:${c};background:${c}22;border:1px solid ${c}88">${m}</div><div style="font:700 30px Geist">${n}</div></div><div class="row" style="margin-top:18px;gap:10px"><div style="width:52px;height:28px;border-radius:14px;background:${c};position:relative"><div style="position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:11px;background:#fff"></div></div><span class="muted" style="font-size:22px">On</span></div></div>`).join('');
+const prov8 = [...$('prov8').children];
+$('lock8').innerHTML = M.icon('lock', 26, '#FFC27A', 2.4) + ' Stays on this PC';
+const tProv = [w('oa3', 'openrouter'), w('oa3', 'gemini'), w('oa3', 'deepseek'), w('oa3', 'g')];
+const tSet8 = w('oa2', 'providers'), tFree = w('oa4', 'free'), tPaid = w('oa4', 'paid'), tTest = w('oa5', 'test'), tLive = w('oa5', 'live'), tMach = w('oa6', 'machine');
+M.cue(tSet8, 'swipe', { g: 0.45 }); tProv.forEach((x, i) => M.cue(x, 'pop', { g: 0.5, pan: -0.5 + i * 0.33 }));
+M.cue(tFree, 'bubble', { g: 0.5 }); M.cue(tPaid, 'bubble', { g: 0.5 });
+const KEY8 = 'sk-or-v1-••••••••••••';
+for (let i = 0; i < KEY8.length; i += 2) M.cue(tTest - 1.3 + i * 0.045, 'key', { g: 0.2 });
+M.cue(tTest + 0.2, 'click', { g: 0.6 }); M.cue(tLive, 'success', { g: 0.6 }); M.cue(tMach, 'shimmer', { g: 0.5 });
+
+/* ---------- 9 models ---------- */
+const MOD = [['Nemotron 3 Ultra', 'free', '1M', 0, 1], ['Nemotron 3.5 Super VL', 'free', '1M', 1, 1], ['Laguna S 2.1', 'free', '262K', 0, 1], ['Gemini 3.8 Flash', 'free', '1M', 1, 1], ['DeepSeek V4 Flash', '$0.09 / $0.18', '1M', 0, 0], ['MiMo v2.6 Pro', '$0.44 / $0.87', '1M', 0, 0]];
+$('list9').innerHTML = MOD.map(([n, p, c, v, f]) => `<div class="row" style="gap:18px;padding:12px 24px;font:500 27px Geist;border-bottom:1px solid var(--line)"><span class="cb" style="width:26px;height:26px;border-radius:6px;border:2px solid #555;display:inline-block"></span><span style="flex:1">${n}</span>${v ? '<span class="chip info vis" style="font-size:20px">reads images</span>' : ''}<span class="chip sz" style="font-size:20px">${c}</span><span class="chip pr ${f ? 'ok' : ''}" style="font-size:20px;min-width:150px;justify-content:center">${p}</span></div>`).join('');
+const rows9 = [...$('list9').children];
+$('mainv9').textContent = 'Nemotron 3 Ultra'; $('helpv9').textContent = 'Nemotron 3.5 Lightning';
+const tMo1 = w('mo1', 'models'), tFreeOff = L('mo2').start, tPrice = w('mo2', 'price'), tSize = w('mo2', 'size'), tImg = w('mo2', 'images'), tMain = w('mo3', 'main'), tHelp = w('mo3', 'helper');
+rows9.forEach((_, i) => M.cue(tMo1 + 0.1 + i * 0.1, 'tick', { g: 0.3 })); M.cue(tFreeOff, 'snap', { g: 0.55 });
+M.cue(tPrice, 'bubble', { g: 0.4 }); M.cue(tSize, 'bubble', { g: 0.4 }); M.cue(tImg, 'bubble', { g: 0.4 });
+M.cue(tMain, 'pop', { g: 0.5 }); M.cue(tHelp, 'pop', { g: 0.5 });
+
+/* ---------- 10 backups ---------- */
+const CHAIN = ['The model you picked', 'Nemotron Super VL', 'Laguna S', 'Gemini Flash'];
+$('chain10').innerHTML = CHAIN.map((n, i) => `<div class="card row" style="width:620px;padding:20px 24px;gap:20px;font:600 30px Geist"><span class="tile node" style="width:52px;height:52px;border-radius:26px;border:3px solid var(--blue);color:var(--blue)">${i ? i : '▶'}</span><span style="flex:1">${n}</span><span class="st"></span></div>`).join('') + `<div class="abs" id="tok10" style="left:-90px;top:0">${BUN(80)}</div>`;
+const chain10 = [...$('chain10').children].slice(0, 4);
+const tBusy = w('bk2', 'busy'), tNext = w('bk3', 'next'), tAuto = w('bk3', 'automatically');
+chain10.forEach((_, i) => M.cue(L('bk1').start + 0.1 + i * 0.12, 'tick', { g: 0.35 }));
+M.cue(tBusy, 'error', { g: 0.5 }); M.cue(tNext, 'whoosh', { g: 0.45, d: 0.5 }); M.cue(tAuto, 'success', { g: 0.6 });
+
+/* ---------- 11 second opinion ---------- */
+const Q11 = 'ask nemotron to review this fix';
+const ANS = [['✓', 'The null check is right', '#3fb950'], ['✓', 'Tests cover the change', '#3fb950'], ['!', 'One edge case was missed', '#f5a524']];
+$('ans11').innerHTML = ANS.map(([i, s, c]) => `<div class="row" style="gap:14px"><span style="color:${c};font-weight:800;width:24px">${i}</span>${s}</div>`).join('');
+const ans11 = [...$('ans11').children];
+const tQ11 = L('so2').start - 0.2, tA11 = w('so2', 'opinion'), tChat11 = w('so2', 'chat');
+for (let i = 0; i < Q11.length; i += 2) M.cue(tQ11 + i * 0.03, 'key', { g: 0.2 });
+M.cue(tA11, 'ding', { g: 0.5 }); ans11.forEach((_, i) => M.cue(tA11 + 0.3 + i * 0.25, 'tick', { g: 0.35 })); M.cue(tChat11, 'chime', { g: 0.4 });
+
+/* ---------- 12 trust ---------- */
+$('shield12').innerHTML = `<div style="width:240px;height:240px;border-radius:60px;background:linear-gradient(135deg,#FFC27A33,#FF6B8B33);border:2px solid #FF6B8B88;display:flex;align-items:center;justify-content:center">${M.icon('shield', 140, '#FFC27A', 1.8)}</div>`;
+$('t12aI').innerHTML = M.icon('check', 54, '#3fb950', 3); $('t12bI').innerHTML = M.icon('check', 54, '#3fb950', 3);
+const tLogin12 = w('sa1', 'login'), tTwice = w('sa2', 'twice');
+M.cue(L('sa1').start, 'thud', { g: 0.5 }); M.cue(tLogin12, 'success', { g: 0.45 }); M.cue(tTwice, 'success', { g: 0.5 });
+
+/* ---------- 13 CTA ---------- */
+const wm13 = M.split($('wm13'), 'chars');
+const tEnd = L('out1').start, tTag = L('out2').start, tSoon = w('out3', 'free');
+$('srchI13').innerHTML = M.icon('search', 30, '#8b8f98', 2.2);
+M.cue(tEnd - 0.05, 'reveal', { g: 0.85 }); M.cue(tTag + 0.1, 'swish', { g: 0.4 }); M.cue(w('out2', 'hops'), 'chime', { g: 0.5 }); M.cue(tSoon, 'impact', { g: 0.45 });
+
+/* ---------- cursor: one path across the film, [t,x,y] in stage px ---------- */
+$('cursor').innerHTML = M.CURSOR;
+// cursor targets are measured from the real layout on the first frame (before any motion transforms)
+const STG = $('stage');
+const at = (id, fx = 0.5, fy = 0.5) => { const r = $(id).getBoundingClientRect(), sr = STG.getBoundingClientRect(), k = sr.width / W; return [(r.left - sr.left + r.width * fx) / k, (r.top - sr.top + r.height * fy) / k]; };
+let curPath = null, FLY6 = null, LOGO0 = [960, 470];
+const buildLayout = () => {
+  LOGO0 = at('logo0');
+  curPath = M.path([
+    [tSearch - 0.8, 980, 760], [tSearch - 0.25, ...at('srch3', 0.5)], [tFound + 0.2, ...at('ext3', 0.6, 0.4)], [tIns3, ...at('ibtn3')], [tGuide - 0.3, ...at('guide3', 0.6, 0.75)],
+    [tSb, ...at('sbi4', 0.3, -3)], [tClick4, ...at('sbi4', 0.4)], [tPick4 - 0.1, ...at('q4b', 0.75)], [tPick4 + 0.55, ...at('q4b', 0.4)], [tTab + 0.4, ...at('newtab4', 0.5, 2.5)],
+    [tAdd5 - 0.6, ...at('add5', 0.7, 2)], [tAdd5, ...at('add5', 0.55)], [tLog5 + 0.1, ...at('lbtn5')], [tRen5, ...at('nm5a', 0.6)], [tWork5 + 0.5, ...at('nm5a', 1.6, 1.6)],
+    [tCont7 - 0.5, ...at('p7', 0.8, 1.5)], [tCont7, ...at('p7a', 0.4)], [tWhere7 - 0.6, ...at('p7b', 0.4)], [tWhere7, ...at('p7c', 0.3)], [tAlong[0], ...at('p7c', 0.6, 3)],
+    [tTest - 0.4, ...at('test8', 0.5, 2.5)], [tTest + 0.2, ...at('test8')], [tMach, ...at('test8', 0.7, 2.6)],
+    [tFreeOff - 0.5, ...at('tog9', -1, 2)], [tFreeOff, ...at('tog9')], [tMain, ...at('main9', 0.6)],
+  ]);
+  FLY6 = left6.map((e, i) => { const r = e.getBoundingClientRect(), q = right6[i].getBoundingClientRect(), sr = STG.getBoundingClientRect(), k = sr.width / W; return [[(r.left - sr.left) / k, (r.top - sr.top) / k], [(q.left - sr.left) / k, (q.top - sr.top) / k]]; });
+};
+const CLICKS = [tSearch - 0.25, tIns3, tClick4, tPick4 + 0.55, tAdd5, tLog5 + 0.1, tCont7, tWhere7 - 0.6, tWhere7, tTest + 0.2, tFreeOff];
+const CUR_ON = [[tSearch - 0.9, tGuide + 0.2], [tSb - 0.1, tTab + 0.6], [tAdd5 - 0.7, tWork5 + 0.6], [tCont7 - 0.6, tAlong[0] + 0.3], [tTest - 0.5, tMach + 0.3], [tFreeOff - 0.6, tMain + 0.2]];
+
+/* ---------------- draw ---------------- */
+M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
+  if (!curPath) buildLayout();
+  // scenes
+  for (const s of SC) {
+    const v = M.vis(t, s.a, s.b, { lin: 0.45, lout: 0.25, blur: 16 });
+    const push = 1 + 0.03 * M.eio((t - s.a) / Math.max(1, s.b - s.a));
+    M.apply(s.el, v, `scale(${push.toFixed(4)})`);
+  }
+  const on = (i) => t > SC[i].a - 0.1 && t < SC[i].b + 0.3;
+  $('glow').style.opacity = 0.6 + 0.4 * M.pulse(t, 6, 0, 1);
+
+  // chapter chip + caption
+  const c = chapAt(t);
+  $('chap').style.opacity = c < 0 ? 0 : M.clamp((t - SC[3].a - 0.2) / 0.3);
+  if (c >= 0) { M.setText($('chapN'), String(c + 1).padStart(2, '0') + ' / 10'); M.setText($('chapT'), CH[c][1]); chapDots.forEach((d, i) => (d.style.background = i <= c ? '#FFC27A' : '#3a3d46')); }
+  const ln = M.VO.lines.find((l) => t >= l.start - 0.15 && t <= l.end + 0.35);
+  const cap = $('cap');
+  if (ln && t > SC[1].a) { M.setText(cap, CAP(ln.text)); const k = M.sp(t, ln.start - 0.15, M.FAST); cap.style.opacity = Math.min(M.clamp((t - ln.start + 0.15) / 0.15), M.clamp((ln.end + 0.35 - t) / 0.15)); cap.style.transform = `translateY(${(1 - k) * 14}px)`; }
+  else cap.style.opacity = 0;
+
+  // cursor
+  const cur = $('cursor'); const vis = CUR_ON.some(([a, b]) => t > a && t < b);
+  if (vis) { const { x, y } = curPath(t); const pr = CLICKS.reduce((m, k) => Math.max(m, 1 - Math.abs(t - k) / 0.12), 0); cur.style.opacity = 1; cur.style.transform = `translate(${x}px,${y}px) scale(${1 - 0.18 * M.clamp(pr)})`; }
+  else cur.style.opacity = 0;
+
+  // 0 intro: storm -> icon + wordmark
+  if (on(0)) {
+    // camera shake on every bolt and on the implosion
+    let sx = 0, sy = 0;
+    BOLT_T.forEach((b) => { const [a, c] = M.shake(t, b, 9, 0.35); sx += a; sy += c; });
+    const [ia, ib] = M.shake(t, tForm, 26, 0.6); sx += ia; sy += ib;
+    $('s0').style.translate = `${sx}px ${sy}px`;
+    // clouds swirl inwards, then get blown away by the implosion
+    const pc = M.eio(t / tForm), blow = M.clamp((t - tForm) / 0.6);
+    CLOUDS.forEach((c, i) => {
+      const ang = c.a + pc * 1.9, r = M.lerp(c.r0, 160, pc) + M.eo(blow) * 1400;
+      const x = CX + Math.cos(ang) * r - c.s / 2, y = CY + Math.sin(ang) * r * 0.7 - c.s * 0.31;
+      const el = cloudEls[i]; el.style.transform = `translate(${x}px,${y}px) rotate(${ang * 40}deg) scale(${1 + blow})`;
+      el.style.opacity = M.clamp(t / 0.8) * (1 - blow);
+    });
+    // shards accelerate along a spiral into the eye
+    SHARDS.forEach((s, i) => {
+      const el = shardEls[i];
+      if (t < s.ts || t > s.ta + 0.02) { el.style.opacity = 0; return; }
+      const p = M.ei((t - s.ts) / (s.ta - s.ts)), ang = s.a + p * s.swirl, r = s.r0 * (1 - p);
+      const x = CX + Math.cos(ang) * r, y = CY + Math.sin(ang) * r * 0.75;
+      el.style.opacity = M.clamp((t - s.ts) / 0.25);
+      el.style.transform = `translate(${x}px,${y}px) rotate(${(ang * 57 + 90 + s.spin * t * 20).toFixed(1)}deg) scale(${(1 + 1.6 * p).toFixed(2)},${(1 - 0.4 * p).toFixed(2)})`;
+    });
+    // lightning bolts: strike, glow, fade
+    bolts.forEach((g, i) => {
+      const b = BOLT_T[i]; g.querySelectorAll('path').forEach((p) => M.stroke(p, t, b, 0.08));
+      g.style.opacity = t < b ? 0 : M.clamp(1 - (t - b - 0.1) / 0.3);
+    });
+    // white flashes: small on bolts, big on the implosion
+    const fl = Math.max(...BOLT_T.map((b) => 0.22 * M.flash(t, b - 0.02, 0.22)), 0.95 * M.flash(t, tForm - 0.1, 0.5));
+    $('flash0').style.opacity = fl;
+    // shockwave rings + sparks out of the icon
+    const rings = M.ripple(t, tForm, 3, 0.12, 1.0, 3.2);
+    $('ring0').innerHTML = rings.map((q) => `<div style="position:absolute;left:${LOGO0[0] - 120}px;top:${LOGO0[1] - 120}px;width:240px;height:240px;border-radius:50%;border:4px solid #FFC27A;transform:scale(${q.s});opacity:${q.o}"></div>`).join('');
+    const parts = M.burst(t, tForm, 46, { colors: SH_C, speed: 1100, gravity: 260, life: 1.3, seed: 9, spread: Math.PI * 2 });
+    $('spark0').innerHTML = parts.map((q) => `<div style="position:absolute;left:${LOGO0[0] + q.x * 1.4}px;top:${LOGO0[1] + q.y}px;width:${q.s * 9}px;height:${q.s * 9}px;border-radius:50%;background:${q.c};opacity:${q.o};box-shadow:0 0 12px ${q.c}"></div>`).join('');
+    // the lockup: icon slams in, wordmark assembles beside it, then MEET HOPPY
+    const k = M.sp(t, tForm, [14, 0.6]);
+    $('logo0').style.opacity = M.clamp((t - tForm) / 0.05);
+    $('logo0').style.transform = `scale(${0.1 + 0.9 * k}) rotate(${(1 - k) * -120}deg)`;
+    M.scramble(wm0, t, tForm + 0.18, 0.55, 260, 5);
+    wm0.forEach((s) => { if (t < tForm + 0.18) s.style.opacity = 0; });
+    $('sub0').style.opacity = M.clamp((t - tForm - 0.55) / 0.3); $('sub0').style.transform = `translateY(${(1 - M.sp(t, tForm + 0.55)) * 20}px)`;
+    const mk = M.sp(t, tMeet - 0.1, M.MORPH); $('meet0').style.opacity = M.clamp((t - tMeet + 0.1) / 0.2);
+    $('meet0').style.letterSpacing = (0.9 - 0.58 * mk).toFixed(3) + 'em';
+    $('glow').style.opacity = t < tForm ? 0.4 + 0.6 * M.pulse(t, 0.9, 0, 1) : 1;
+  }
+
+  // 1 questions: one big question at a time, with its picture
+  if (on(1)) {
+    const cur = qt.findIndex((q) => t >= q.a - 0.1 && t < q.b);
+    M.setText($('qn1'), cur >= 0 ? `QUESTION ${cur + 1} / 4` : '');
+    $('qn1').style.opacity = M.clamp((t - SC[1].a - 0.2) / 0.3);
+    qt.forEach((q, i) => {
+      const v = M.vis(t, q.a, q.b, { lin: 0.2, lout: 0.25, blur: 14 });
+      q.el.style.opacity = v.o; q.el.style.filter = `blur(${v.blur}px)`;
+      M.words(q.sp, t, q.times, { style: 'rise' });
+      const vv = M.vis(t, q.a + 0.15, q.b, { lin: 0.3, lout: 0.25, blur: 14 });
+      q.v.style.opacity = vv.o; q.v.style.filter = `blur(${vv.blur}px)`;
+      q.v.style.transform = `translateX(${(1 - M.sp(t, q.a + 0.15, M.MORPH)) * 120}px)`;
+    });
+    // q1: token meter drains to zero
+    const left = 100 - 100 * M.eio((t - tTok + 0.2) / 1.0);
+    $('meter1').style.width = left + '%'; M.setText($('meterN1'), Math.round(left) + '%');
+    $('meterN1').style.color = left < 15 ? '#ff8a80' : '#F3F1EC';
+    const lm = M.sp(t, tTask, M.POP); $('lim1').style.opacity = M.clamp((t - tTask) / 0.06); $('lim1').style.transform = `scale(${0.8 + 0.2 * lm})`;
+    // q2: the log out / log in loop spins
+    $('loopI2').style.transform = `rotate(${(t - qt[1].a) * 260}deg)`;
+    $('loop2').style.opacity = M.clamp((t - tAcc2) / 0.2);
+    // q3: chat bubbles crumble away
+    b3.forEach((e, i) => { const d = M.clamp((t - tCtx - i * 0.12) / 0.6); e.style.opacity = 1 - d; e.style.transform = `translateY(${d * 60}px) rotate(${d * (i % 2 ? 8 : -8)}deg)`; e.style.filter = `blur(${d * 10}px)`; });
+    const lc = M.sp(t, tCtx + 0.2, M.POP); $('lost3').style.opacity = M.clamp((t - tCtx - 0.2) / 0.08); $('lost3').style.transform = `scale(${0.6 + 0.4 * lc})`;
+    // q4: locked model tiles
+    $('lock4').style.opacity = M.clamp((t - tToo) / 0.15);
+    [...$('tiles4').children].forEach((e, i) => { e.style.opacity = 0.35 + 0.65 * M.clamp((t - qt[3].a - 0.2 - i * 0.1) / 0.2) * (t < tToo ? 1 : 0.55); });
+  }
+
+  // 2 the fix
+  if (on(2)) {
+    const k = M.sp(t, tFix - 0.1, [15, 0.7]);
+    $('fixT').style.opacity = M.clamp((t - tFix + 0.1) / 0.1); $('fixT').style.transform = `scale(${0.7 + 0.3 * k})`;
+    ['sol1', 'sol2', 'sol3'].forEach((id, i) => appear($(id), t, tSol[i] - 0.15, { dy: 80, s0: 0.85, sp: M.POP }));
+    $('sol3').style.boxShadow = t > tSol[2] + 0.2 ? `0 0 0 3px rgba(63,185,80,${0.6 * M.clamp(1 - (t - tSol[2] - 0.2) / 1.5)})` : 'none';
+  }
+
+  // 3 install
+  if (on(3)) {
+    M.setText($('srchT3'), (M.typed(SQ3, t, tSearch, 22) || '') + (t > tSearch - 0.3 && t < tFound + 0.4 ? M.caret(t) : ''));
+    $('srch3').style.boxShadow = t > tSearch - 0.3 ? '0 0 0 2px rgba(14,99,156,.9)' : 'none';
+    appear($('ext3'), t, tFound, { dy: 24, s0: 0.92, sp: M.POP });
+    $('sk3').style.opacity = M.clamp((t - tFound - 0.15) / 0.3);
+    const ib = $('ibtn3'), done = t > tIns3 + 0.55;
+    M.setText(ib, t < tIns3 ? 'Install' : done ? '✓ Installed' : 'Installing…');
+    ib.style.background = done ? '#2b2e37' : '#0e639c'; ib.style.color = done ? '#3fb950' : '#fff';
+    ib.style.transform = `scale(${1 - 0.08 * M.clamp(1 - Math.abs(t - tIns3) / 0.12)})`;
+    appear($('guide3'), t, tGuide - 0.1, { dx: 500, dy: 0 });
+    steps3.forEach((e, i) => { const k = M.sp(t, tGuide + 0.35 + i * 0.16, M.FAST); e.style.opacity = M.clamp((t - tGuide - 0.35 - i * 0.16) / 0.12); e.style.transform = `translateX(${(1 - k) * 30}px)`;
+      const ck = e.querySelector('.ck'); if (!ck.innerHTML) ck.innerHTML = '<span style="display:inline-block;width:30px;height:30px;border-radius:15px;border:3px solid #3794ff"></span>'; });
+  }
+
+  // 4 switch
+  if (on(4)) {
+    appear($('w4'), t, SC[4].a, { dy: 50 });
+    const sb = $('sbi4'); sb.style.background = t > tSb - 0.1 ? 'rgba(255,255,255,.25)' : 'transparent'; sb.style.boxShadow = t > tSb && t < tClick4 + 0.3 ? `0 0 0 ${3 + 3 * M.pulse(t, 0.8, 0, 1)}px rgba(255,194,122,.8)` : 'none';
+    const qv = M.vis(t, tList - 0.15, tPick4 + 1.15, { lin: 0.2, lout: 0.18 }); const qp = $('qp4'); qp.style.opacity = qv.o; qp.style.transform = `scale(${0.96 + 0.04 * qv.o})`;
+    M.stroke($('arr4'), t, tClick4 + 0.1, 0.5); $('arr4').style.opacity = M.clamp(1 - (t - tPick4 - 0.6) / 0.3);
+    $('q4b').style.background = t > tPick4 - 0.1 ? '#04395e' : 'transparent'; $('q4a').style.background = t < tPick4 - 0.1 ? '#2b2e37' : 'transparent';
+    const nt = $('newtab4'); const nk = M.sp(t, tTab - 0.1, M.FAST); nt.style.opacity = M.clamp((t - tTab + 0.1) / 0.1); nt.style.transform = `translateY(${(1 - nk) * -20}px)`;
+    M.setText($('sbt4'), t > tPick4 + 0.6 ? 'Claude · Personal' : 'Claude · Work');
+    appear($('stamp4'), t, tNoRel, { dy: 0, s0: 2.2, rot: -14, sp: [20, 0.7], fade: 0.06 });
+  }
+
+  // 5 accounts
+  if (on(5)) {
+    appear($('a5a'), t, L('ac1').start + 0.1, { dy: 40 });
+    appear($('add5'), t, L('ac1').start + 0.3, { dy: 30 });
+    $('add5').style.background = t > tAdd5 - 0.1 && t < tAdd5 + 0.4 ? 'rgba(55,148,255,.12)' : 'transparent';
+    const inp = $('input5'); const iv = M.vis(t, tAdd5 + 0.15, tLog5, { lin: 0.2, lout: 0.2 }); inp.style.opacity = iv.o; inp.style.transform = `translateX(${(1 - iv.o) * 40}px)`;
+    M.setText($('typed5'), M.typed('Personal', t, tName5 - 0.1, 16) + (t < tLog5 ? M.caret(t) : ''));
+    const lg = $('login5'); const lv = M.vis(t, tLog5 - 0.25, tOwn5 + 0.3, { lin: 0.2, lout: 0.2 }); lg.style.opacity = lv.o; lg.style.transform = `translateX(${(1 - lv.o) * 40}px)`;
+    $('lbtn5').style.transform = `scale(${1 - 0.08 * M.clamp(1 - Math.abs(t - tLog5 - 0.1) / 0.12)})`;
+    appear($('a5b'), t, tOwn5, { dy: -20, sp: M.POP }); M.setText($('nm5b'), 'Personal');
+    $('li5').style.opacity = M.clamp((t - tOwn5 - 0.1) / 0.15);
+    const ren = t > tWork5 - 0.05; M.setText($('nm5a'), ren ? 'Work (Max)' : 'main'); M.setText($('av5a'), ren ? 'W' : 'M');
+    $('nm5a').style.color = ren && t < tWork5 + 0.6 ? '#FFC27A' : '#F3F1EC';
+    $('a5a').style.boxShadow = t > tRen5 - 0.1 && t < tWork5 + 0.6 ? '0 0 0 3px rgba(255,194,122,.7)' : 'none';
+  }
+
+  // 6 chats
+  if (on(6)) {
+    left6.forEach((e, i) => appear(e, t, SC[6].a + 0.2 + i * 0.12, { dy: 20 }));
+    const fl = [];
+    MSG6.forEach(([k, s], i) => {
+      const t0 = tTravel + i * 0.22, p = M.eio((t - t0) / 0.6);
+      if (t > t0 && t < t0 + 0.6) { const a = M.arc(t, t0, 0.6, FLY6[i][0], FLY6[i][1], -260); fl.push(`<div class="bubble ${k}" style="position:absolute;left:${a.x}px;top:${a.y}px;font-size:22px;max-width:420px;transform:scale(${0.9}) ;opacity:${0.9}">${s}</div>`); }
+    });
+    $('fly6').innerHTML = fl.join('');
+    right6.slice(0, 3).forEach((e, i) => { e.style.opacity = t > tTravel + i * 0.22 + 0.6 ? M.clamp((t - tTravel - i * 0.22 - 0.6) / 0.1) : 0; });
+    const inTxt = M.typed('/resume', t, tRes - 0.35, 16); M.setText($('in6'), (inTxt || '') + (t > SC[6].a + 0.3 && t < tStop - 0.2 ? M.caret(t) : ''));
+    $('in6').style.opacity = t > tStop - 0.2 ? 0.4 : 1;
+    const ct = $('cont6'); ct.style.opacity = M.clamp((t - tStop + 0.2) / 0.15); M.setText(ct, M.typed(CONT6, t, tStop, 28));
+    appear(ct, t, tStop - 0.2, { dy: 20 });
+  }
+
+  // 7 continue
+  if (on(7)) {
+    appear($('w7a'), t, SC[7].a, { dy: 40 });
+    appear($('lim7'), t, tLim7, { dy: 40, sp: M.POP, fade: 0.05 });
+    const pk = $('p7'); appear(pk, t, tCont7 - 0.15, { dy: 20 });
+    $('p7a').style.background = t > tCont7 - 0.05 && t < tWhere7 - 0.7 ? '#04395e' : 'transparent';
+    $('p7b').style.opacity = M.clamp((t - tCont7 - 0.2) / 0.2); $('p7b').style.background = t > tWhere7 - 0.7 && t < tWhere7 - 0.05 ? '#04395e' : 'transparent';
+    $('p7c').style.opacity = M.clamp((t - tWhere7 + 0.7) / 0.2); $('p7c').style.background = t > tWhere7 - 0.05 ? '#04395e' : 'transparent';
+    stack7.forEach((e, i) => appear(e, t, tAlong[i], { dx: -80, dy: 0, sp: M.POP }));
+  }
+
+  // 8 providers
+  if (on(8)) {
+    prov8.forEach((e, i) => { const k = appear(e, t, tProv[i] - 0.05, { dy: 0, s0: 0.92, sp: M.POP }); e.style.opacity = t < tSet8 ? M.clamp((t - SC[8].a - 0.3) / 0.3) * 0.4 : Math.max(0.4, M.clamp((t - tProv[i] + 0.05) / 0.14)); e.style.filter = t < tProv[i] - 0.05 ? 'grayscale(1)' : 'none'; });
+    appear($('free8'), t, tFree, { dy: -20, s0: 0.6, sp: M.POP }); appear($('paid8'), t, tPaid, { dy: -20, s0: 0.6, sp: M.POP });
+    $('free8').className = 'chip ok'; $('paid8').className = 'chip info';
+    appear($('key8'), t, tTest - 1.5, { dy: 40 });
+    M.setText($('keytxt8'), M.typed(KEY8, t, tTest - 1.3, 22) + (t < tTest + 0.2 ? M.caret(t) : ''));
+    $('test8').style.transform = `scale(${1 - 0.08 * M.clamp(1 - Math.abs(t - tTest - 0.2) / 0.12)})`;
+    appear($('ok8'), t, tLive, { dy: 10, s0: 0.8, sp: M.POP });
+    appear($('lock8'), t, tMach - 0.1, { dy: 10, s0: 0.8 });
+    const sh = M.clamp((t - tMach) / 0.6); $('lock8').style.boxShadow = sh > 0 && sh < 1 ? `0 0 ${30 * Math.sin(sh * Math.PI)}px rgba(255,194,122,.8)` : 'none';
+  }
+
+  // 9 models
+  if (on(9)) {
+    const freeOff = t > tFreeOff;
+    $('knob9').style.left = (freeOff ? 4 : 32) - (freeOff ? 0 : 0) + 'px'; $('tog9').style.background = freeOff ? '#3a3d46' : '#0e639c';
+    rows9.forEach((e, i) => { const paid = !MOD[i][4]; const t0 = paid ? tFreeOff + 0.1 + (i - 4) * 0.12 : tMo1 + 0.1 + i * 0.1; appear(e, t, t0, { dy: 24 });
+      e.querySelector('.cb').style.background = (i < 3 || (paid && t > tMain + 0.2)) && t > t0 + 0.2 ? '#0e639c' : 'transparent';
+      const pr = e.querySelector('.pr'); pr.style.boxShadow = t > tPrice && t < tPrice + 0.8 ? '0 0 0 3px rgba(255,194,122,.8)' : 'none';
+      const sz = e.querySelector('.sz'); sz.style.boxShadow = t > tSize && t < tSize + 0.8 ? '0 0 0 3px rgba(255,194,122,.8)' : 'none';
+      const vi = e.querySelector('.vis'); if (vi) vi.style.boxShadow = t > tImg && t < tImg + 0.9 ? '0 0 0 3px rgba(255,194,122,.8)' : 'none'; });
+    appear($('main9'), t, tMain, { dy: 30, sp: M.POP }); appear($('help9'), t, tHelp, { dy: 30, sp: M.POP });
+  }
+
+  // 10 backups
+  if (on(10)) {
+    chain10.forEach((e, i) => { appear(e, t, L('bk1').start + 0.1 + i * 0.12, { dx: 60, dy: 0 });
+      const st = e.querySelector('.st'), node = e.querySelector('.node');
+      if (i === 0) { const busy = t > tBusy; st.innerHTML = busy ? '<span class="chip bad" style="font-size:22px">busy</span>' : ''; node.style.borderColor = busy ? '#ff5f57' : '#3794ff'; node.style.color = busy ? '#ff5f57' : '#3794ff'; e.style.opacity = Math.min(e.style.opacity, busy ? 0.6 : 1); }
+      if (i === 1) { const okk = t > tAuto; st.innerHTML = okk ? '<span class="chip ok" style="font-size:22px">✓ took over</span>' : ''; e.style.borderColor = okk ? '#3fb950' : ''; } });
+    const tok = $('tok10'); const p = M.eio((t - tNext) / 0.55); const y = M.lerp(0, 112, p) - Math.sin(p * Math.PI) * 70;
+    tok.style.transform = `translate(0px,${y}px)`; tok.style.opacity = M.clamp((t - L('bk1').start - 0.5) / 0.2);
+  }
+
+  // 11 second opinion
+  if (on(11)) {
+    const q = $('q11'); q.style.opacity = M.clamp((t - tQ11) / 0.1); M.setText(q, M.typed(Q11, t, tQ11, 34) || ' ');
+    appear($('a11'), t, tA11, { dy: 40 });
+    ans11.forEach((e, i) => appear(e, t, tA11 + 0.3 + i * 0.25, { dx: -20, dy: 0 }));
+  }
+
+  // 12 trust
+  if (on(12)) {
+    appear($('shield12'), t, SC[12].a + 0.1, { dy: 0, s0: 0.6, sp: M.POP });
+    appear($('t12a'), t, L('sa1').start, { dx: 60, dy: 0 }); appear($('t12b'), t, L('sa2').start, { dx: 60, dy: 0 });
+    $('t12aI').style.opacity = M.clamp((t - tLogin12) / 0.1); $('t12bI').style.opacity = M.clamp((t - tTwice) / 0.1);
+  }
+
+  // 13 CTA
+  if (on(13)) {
+    const k = M.sp(t, tEnd, [13, 0.74]);
+    $('logo13').style.transform = `scale(${0.3 + 0.7 * k}) rotate(${(1 - k) * -30}deg)`; $('logo13').style.opacity = M.clamp((t - tEnd) / 0.1);
+    M.words(wm13, t, tEnd + 0.12, { step: 0.04, style: 'mask' });
+    appear($('tag13'), t, tTag, { dy: 30 });
+    appear($('pill13'), t, tSoon - 0.15, { dy: 30, s0: 0.85, sp: M.POP });
+    appear($('srch13'), t, w('out3', 'marketplace'), { dy: 30, s0: 0.9 });
+  }
+} });
+</script>

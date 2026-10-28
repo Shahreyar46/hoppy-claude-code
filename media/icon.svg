@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Hoppy: a full bunny silhouette mid-hop, side view. A flat silhouette like a logo mark: no eyes, nose or mouth. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFC27A"/>
+      <stop offset="1" stop-color="#FF6B8B"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="0.3" cy="0.2" r="0.7">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="58" fill="url(#bg)"/>
+  <rect width="256" height="256" rx="58" fill="url(#shine)"/>
+
+  <!-- shadow on the ground, behind the bunny: it is in the air -->
+  <ellipse cx="124" cy="224" rx="50" ry="8" fill="#7A2340" opacity="0.22"/>
+
+  <!-- motion lines -->
+  <g stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity="0.8">
+    <path d="M18 120 h24"/>
+    <path d="M12 142 h28"/>
+    <path d="M22 164 h16"/>
+  </g>
+
+  <g transform="rotate(-12 128 140)">
+    <!-- far side (soft pink for depth) -->
+    <g fill="#FFE1EA">
+      <ellipse cx="146" cy="60" rx="12" ry="40" transform="rotate(-30 146 60)"/>
+      <ellipse cx="74" cy="188" rx="30" ry="11" transform="rotate(18 74 188)"/>
+      <ellipse cx="176" cy="182" rx="12" ry="8" transform="rotate(35 176 182)"/>
+    </g>
+    <!-- near side: one white silhouette -->
+    <g fill="#ffffff">
+      <ellipse cx="166" cy="56" rx="13" ry="42" transform="rotate(-12 166 56)"/>
+      <ellipse cx="116" cy="152" rx="60" ry="44" transform="rotate(-14 116 152)"/>
+      <circle cx="166" cy="110" r="34"/>
+      <ellipse cx="194" cy="120" rx="18" ry="15"/>
+      <circle cx="58" cy="138" r="17"/>
+      <ellipse cx="88" cy="194" rx="34" ry="13" transform="rotate(16 88 194)"/>
+      <ellipse cx="160" cy="186" rx="14" ry="9" transform="rotate(32 160 186)"/>
+    </g>
+    <!-- inner ear: a soft pink stripe gives the ear its shape (not a face feature) -->
+    <ellipse cx="166" cy="58" rx="5.5" ry="28" transform="rotate(-12 166 58)" fill="#FFB3C7"/>
+  </g>
+
+  <!-- little spark of joy -->
+  <path d="M212 168 l5 13 13 5 -13 5 -5 13 -5 -13 -13 -5 13 -5z" fill="#ffffff"/>
+  <circle cx="226" cy="146" r="4" fill="#ffffff" opacity="0.8"/>
+</svg>

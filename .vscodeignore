@@ -1,0 +1,13 @@
+src/**
+node_modules/**
+out/**/*.map
+tsconfig.json
+_session-state.md
+*.vsix
+test/**
+.vscode-test/**
+video/**
+share/**
+.playwright-mcp/**
+.vscode-test/**
+**/*.zip
