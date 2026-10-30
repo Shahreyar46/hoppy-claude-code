@@ -16,6 +16,12 @@
     let draftSmall = null;
     let draftFallback = null;
     let search = '';
+    /** Provider whose key form is open. */
+    let openKey = null;
+    /** Account whose edit row is open. */
+    let editDir = null;
+    /** Keep unsaved edits through the next state message (an action that saves nothing). */
+    let keepDraftsOnce = false;
     let freeOnly = true;
     let enabledOnly = false;
 
@@ -25,7 +31,7 @@
         ['models', 'Models'],
         ['fallback', 'Backups'],
     ];
-    const MONO = { openrouter: 'OR', gemini: 'G', deepseek: 'DS', glm: 'Z' };
+    const MONO = { openrouter: 'OR', gemini: 'G', deepseek: 'DS', glm: 'Z', groq: 'GQ', cerebras: 'CB', mistral: 'M', nvidia: 'NV' };
     const svg = (d, size = 16) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
     const ICON = {
         check: svg('<path d="M20 6 9 17l-5-5"/>'),
@@ -42,7 +48,7 @@
         book: svg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V21h16"/>', 14),
     };
     // Actions that change config; ignored while a save is running so saves cannot collide.
-    const MUTATING = new Set(['save-key', 'save-models', 'save-fallback', 'toggle', 'switch', 'add-account', 'setup']);
+    const MUTATING = new Set(['save-key', 'save-models', 'save-fallback', 'toggle', 'switch', 'add-account', 'setup', 'check-models', 'toggle-on']);
     let busy = false;
 
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -91,12 +97,31 @@
                 (t) => `
             <button class="hop ${t.current ? 'current' : ''} ${t.kind}" ${t.current ? 'aria-current="true" disabled' : ''}
                 data-act="switch" data-dir="${esc(t.dir)}" title="${t.current ? 'In use now' : `Switch to ${esc(t.title)}`}">
-                <span class="dot" aria-hidden="true"></span>
+                ${t.current ? ICON.check : ''}
                 <span class="hop-label">${t.kind === 'other' ? 'Other AI' : esc(t.label)}</span>
             </button>`,
             )
-            .join('<span class="wire" aria-hidden="true"></span>');
-        return `<div class="route" role="group" aria-label="Where the Claude panel points">${nodes}</div>`;
+            .join('');
+        return `<div class="route" role="group" aria-label="Where the Claude panel points"><span class="route-label">Claude panel uses</span><span class="hops">${nodes}</span></div>`;
+    }
+
+    /** The account in use is at its limit: say so first, with the way out. */
+    function limitBanner() {
+        const cur = state.targets.find((t) => t.current);
+        if (!cur || !cur.limit) {
+            return '';
+        }
+        const next = state.targets.find((t) => t.kind === 'claude' && !t.current && t.loggedIn && !t.limit);
+        const other = state.targets.find((t) => t.kind === 'other');
+        return `
+            <section class="callout warn limit" role="alert">
+                <div><strong>${esc(cur.label)} is at its usage limit</strong> <span class="muted">· ${esc(cur.limit)}</span>
+                <div class="muted small">Switch and keep working. To carry a chat along, use <em>Continue a chat</em> in the Hoppy menu.</div></div>
+                <div class="actions">
+                    ${next ? `<button data-act="switch" data-dir="${esc(next.dir)}">Use ${esc(next.label)}</button>` : ''}
+                    ${other ? `<button class="${next ? 'ghost' : ''}" data-act="switch" data-dir="${esc(other.dir)}">Use Other AI</button>` : ''}
+                </div>
+            </section>`;
     }
 
     function onboarding() {
@@ -121,23 +146,60 @@
 
     // ---------- Tabs ----------
 
+    /** Tokens used, from local chat files. Plain numbers: Anthropic does not publish exact limits. */
+    function usageRow(u) {
+        if (!u) {
+            return '';
+        }
+        if (!u.replies) {
+            return '<div class="usage muted small">No use in the last 7 days</div>';
+        }
+        const stat = (value, label) => `<span class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></span>`;
+        const models = u.models.map((m) => `${esc(m.name)} ${m.share}%`).join(' · ');
+        return `<div class="usage" title="Tokens sent and received, counted from this account's local chat files">
+            ${stat(u.h5, 'last 5 hours')}${stat(u.today, 'today')}${stat(u.week, 'this week')}
+            <span class="models muted small">${models}</span>
+        </div>`;
+    }
+
+    /** Name and status bar color, shown when the account's Edit button is pressed. */
+    function editRow(t) {
+        return `<div class="editrow">
+            <button class="link" data-act="rename" data-dir="${esc(t.dir)}">Rename…</button>
+            ${colorRow(t)}
+            <span class="muted small" title="${esc(t.dir)}">Folder: <code>${esc(t.dir)}</code></span>
+        </div>`;
+    }
+
+    /** Status bar color for an account, so you can tell accounts apart at a glance. */
+    function colorRow(t) {
+        const swatch = (c) =>
+            `<button class="swatch ${t.color === c ? 'on' : ''}" style="--sw:${esc(c)}" data-act="color" data-dir="${esc(t.dir)}" data-color="${esc(c)}" title="Use this color in the status bar" aria-label="Color ${esc(c)}" aria-pressed="${t.color === c}"></button>`;
+        return `<div class="swatches"><span class="muted small">Status bar color</span>
+            ${(state.colors || []).map(swatch).join('')}
+            <button class="swatch none ${t.color ? '' : 'on'}" data-act="color" data-dir="${esc(t.dir)}" data-color="" title="Theme default" aria-label="Theme default" aria-pressed="${!t.color}"></button>
+        </div>`;
+    }
+
     function accountsTab() {
         const claude = state.targets.filter((t) => t.kind === 'claude');
         const other = state.targets.find((t) => t.kind === 'other');
         const card = (t) => `
-            <article class="card account ${t.current ? 'is-current' : ''}">
-                <div class="avatar ${t.kind}" aria-hidden="true">${t.kind === 'other' ? ICON.swap : esc(initials(t.label))}</div>
+            <article class="card account ${t.current ? 'is-current' : ''}" title="Folder: ${esc(t.dir)}">
+                <div class="avatar ${t.kind}" aria-hidden="true"${t.color ? ` style="background:${esc(t.color)}"` : ''}>${t.kind === 'other' ? ICON.swap : esc(initials(t.label))}</div>
                 <div class="grow">
                     <h3>${esc(t.kind === 'other' ? 'Other AI models' : t.label)}
                         ${t.current ? chip('in use', 'accent') : ''}
-                        ${t.kind === 'claude' ? (t.loggedIn ? chip('logged in', 'ok') : chip('needs login', 'warn')) : ''}
+                        ${t.kind === 'claude' && !t.loggedIn ? chip('needs login', 'warn') : ''}
+                        ${t.limit ? chip(`limit · ${t.limit}`, 'warn', 'Claude said this account is at its usage limit') : ''}
                     </h3>
-                    <div class="muted">${t.kind === 'other' ? `Models from your API keys (OpenRouter, Gemini, DeepSeek, GLM…) · ${state.gateway ? 'ready' : 'stopped'}` : esc(t.email || 'Email appears after the first login')}</div>
-                    <code class="path">${esc(t.dir)}</code>
+                    <div class="muted">${t.kind === 'other' ? `Models from the services you connected · ${state.gateway ? 'ready' : 'stopped'}` : esc(t.email || 'Email appears after the first login')}</div>
+                    ${usageRow(t.usage)}
+                    ${t.kind === 'claude' && editDir === t.dir ? editRow(t) : ''}
                 </div>
                 <div class="actions">
-                    ${t.kind === 'claude' ? `<button class="ghost" data-act="rename" data-dir="${esc(t.dir)}">Rename</button>` : ''}
-                    ${t.current ? '' : `<button data-act="switch" data-dir="${esc(t.dir)}">Switch</button>`}
+                    ${t.kind === 'claude' ? `<button class="ghost" data-act="edit" data-dir="${esc(t.dir)}" aria-expanded="${editDir === t.dir}">${editDir === t.dir ? 'Done' : 'Edit'}</button>` : ''}
+                    ${t.current ? '' : `<button class="${t.limit ? 'ghost' : ''}" data-act="switch" data-dir="${esc(t.dir)}" ${t.limit ? `title="At its limit, ${esc(t.limit)}"` : ''}>Switch</button>`}
                 </div>
             </article>`;
         return `
@@ -150,46 +212,81 @@
             <p class="fineprint">Use accounts you own, for example Work and Personal. Several accounts used only to get around usage limits can break Anthropic's terms.</p>`;
     }
 
+    /** One provider's key form: shown for a provider being connected, or when "Change key" is clicked. */
+    function keyForm(p) {
+        const result = keyResults[p.id];
+        return `
+            <div class="keyform">
+                <ol class="steps small">
+                    <li><button class="link" data-act="url" data-url="${esc(p.keyUrl)}">Get a ${esc(p.label)} key ${ICON.external}</button></li>
+                    <li>Paste it here</li>
+                    <li>Hoppy checks it, then saves</li>
+                </ol>
+                <div class="keyrow">
+                    <label class="sr-only" for="key-${p.id}">${esc(p.label)} API key</label>
+                    <input type="password" id="key-${p.id}" placeholder="${p.enabled ? 'Paste the new key' : 'Paste API key'}" autocomplete="off" spellcheck="false">
+                    <button data-act="save-key" data-provider="${p.id}">Test &amp; save</button>
+                    <button class="ghost" data-act="close-key" aria-label="Cancel">Cancel</button>
+                </div>
+                ${result ? `<div class="result ${result.ok ? 'ok' : 'err'}" role="status">${result.ok ? ICON.check : ICON.x} ${esc(result.message)}</div>` : ''}
+            </div>`;
+    }
+
+    const tagChips = (p) => (p.tags || []).map((t) => chip(t, /free/i.test(t) ? 'ok' : '')).join(' ');
+
     function providersTab() {
         if (!state.ccrReady) {
             return emptyState(ICON.plug, 'One-time setup needed', 'Hoppy installs a small local helper that connects Claude Code to other AI models. It takes about a minute and needs no terminal.', '<button data-act="setup">Install and set up</button>');
         }
+        const connected = state.providers.filter((p) => p.enabled);
+        const available = state.providers.filter((p) => !p.enabled);
+        const row = (p) => `
+            <article class="card prow is-on p-${p.id}" id="prov-${p.id}">
+                <div class="prow-main">
+                    <div class="mono-tile" aria-hidden="true">${MONO[p.id] || esc(initials(p.label))}</div>
+                    <div class="grow">
+                        <h3>${esc(p.label)} ${healthOk(p.id)}</h3>
+                        <div class="muted small"><span class="mono">key ••••${esc(p.keyHint || '')}</span> · ${p.models.length} model${p.models.length === 1 ? '' : 's'} on · <button class="link" data-act="goto" data-tab="models">choose models</button></div>
+                    </div>
+                    <button class="ghost" data-act="open-key" data-provider="${p.id}">Change key</button>
+                    <label class="toggle" title="Turn off (the key is kept)">
+                        <input type="checkbox" role="switch" aria-checked="true" aria-label="${esc(p.label)} on or off" data-act="toggle" data-provider="${p.id}" checked>
+                        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+                    </label>
+                </div>
+                ${openKey === p.id ? keyForm(p) : ''}
+            </article>`;
+        const tile = (p) => `
+            <article class="card ptile p-${p.id} ${openKey === p.id ? 'is-open' : ''}" id="prov-${p.id}">
+                <div class="prow-main">
+                    <div class="mono-tile" aria-hidden="true">${MONO[p.id] || esc(initials(p.label))}</div>
+                    <div class="grow">
+                        <h3>${esc(p.label)}</h3>
+                        <div class="tags">${tagChips(p)}</div>
+                    </div>
+                    ${p.savedKey
+                        ? `<button class="ghost" data-act="toggle-on" data-provider="${p.id}" title="Your key is kept from before">Turn on</button>`
+                        : openKey === p.id ? '' : `<button class="ghost" data-act="open-key" data-provider="${p.id}">Connect</button>`}
+                </div>
+                <p class="muted small note">${esc(p.note)}</p>
+                ${openKey === p.id ? keyForm(p) : ''}
+            </article>`;
         return `
-            <p class="lead">Turn providers on, paste a key, and Hoppy checks it before saving. Keys stay on this PC; this page only sees the last 4 characters.</p>
-            <div class="grid">${state.providers
-                .map((p) => {
-                    const result = keyResults[p.id];
-                    const statusLine = p.enabled
-                        ? `<span class="mono">••••${esc(p.keyHint || '')}</span> · ${p.models.length} model${p.models.length === 1 ? '' : 's'}`
-                        : p.savedKey
-                          ? 'Off · key kept, switch on to use it'
-                          : 'No key yet';
-                    return `
-                <article class="card provider ${p.enabled ? 'is-on' : ''} p-${p.id}" id="prov-${p.id}">
-                    <header>
-                        <div class="mono-tile" aria-hidden="true">${MONO[p.id] || esc(initials(p.label))}</div>
-                        <div class="grow">
-                            <h3>${esc(p.label)}</h3>
-                            <div class="muted small">${esc(p.note)}</div>
-                        </div>
-                        <label class="toggle" title="${p.enabled ? 'Turn off (the key is kept)' : 'Turn on'}">
-                            <input type="checkbox" role="switch" aria-checked="${p.enabled}" aria-label="${esc(p.label)} on or off" data-act="toggle" data-provider="${p.id}" ${p.enabled ? 'checked' : ''}>
-                            <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-                        </label>
-                    </header>
-                    <div class="status-line small">${statusLine}</div>
-                    <div class="keyrow">
-                        <label class="sr-only" for="key-${p.id}">${esc(p.label)} API key</label>
-                        <input type="password" id="key-${p.id}" placeholder="${p.enabled ? 'Paste a new key to replace' : 'Paste API key'}" autocomplete="off" spellcheck="false">
-                        <button data-act="save-key" data-provider="${p.id}">Test &amp; save</button>
-                    </div>
-                    <div class="row between">
-                        ${result ? `<div class="result ${result.ok ? 'ok' : 'err'}" role="status">${result.ok ? ICON.check : ICON.x} ${esc(result.message)}</div>` : '<span></span>'}
-                        <button class="link" data-act="url" data-url="${esc(p.keyUrl)}">Get a key ${ICON.external}</button>
-                    </div>
-                </article>`;
-                })
-                .join('')}</div>`;
+            <p class="lead">Connect the AI services you want. Hoppy checks each key before saving it, and keys never leave this PC.</p>
+            ${connected.length
+                ? `<h2 class="section">Connected <span class="count">${connected.length}</span></h2>${connected.map(row).join('')}`
+                : '<div class="callout"><div><strong>Start with OpenRouter.</strong><div class="muted">One free key unlocks 15+ free models. Add Gemini too: it has its own daily limit.</div></div></div>'}
+            ${available.length ? `<h2 class="section">${connected.length ? 'Add another' : 'Choose a service'}</h2><div class="grid">${available.map(tile).join('')}</div>` : ''}`;
+    }
+
+    /** Green dot when any model of this provider passed the last check. */
+    function healthOk(id) {
+        const results = Object.values(state.health || {}).filter((r) => r.selector.startsWith(`${id}/`));
+        if (!results.length) {
+            return '';
+        }
+        const ok = results.some((r) => r.status === 'ok');
+        return chip(ok ? 'working' : 'check failed', ok ? 'ok' : 'err');
     }
 
     function modelsTab() {
@@ -248,10 +345,39 @@
             ${saveBar('save-models', 'Save models')}`;
     }
 
+    const HEALTH = {
+        ok: ['works', 'ok'],
+        'no-tools': ['may not use tools', 'warn'],
+        busy: ['busy, try later', 'warn'],
+        quota: ['daily free limit reached', 'warn'],
+        slow: ['too slow', 'warn'],
+        key: ['key problem', 'err'],
+        credit: ['no credit', 'err'],
+        missing: ['model not found', 'err'],
+        error: ['failed', 'err'],
+    };
+
+    /** Result of the last "Check models" run for one model. */
+    function healthChip(selector) {
+        const r = (state.health || {})[selector];
+        if (!r) {
+            return '';
+        }
+        const [text, kind] = HEALTH[r.status] || ['unknown', ''];
+        const secs = r.status === 'ok' ? ` · ${(r.ms / 1000).toFixed(1)}s` : '';
+        return chip(text + secs, kind, r.note || '');
+    }
+
     function fallbackTab() {
         const enabledSel = new Set(draftEnabled);
         const visionInChain = draftFallback.some((s) => model(s)?.vision && enabledSel.has(s));
         const addable = state.catalog.filter((m) => enabledSel.has(m.selector) && !draftFallback.includes(m.selector));
+        const inChain = [...(state.mainModel ? [state.mainModel] : []), ...draftFallback];
+        const results = inChain.map((x) => (state.health || {})[x]).filter(Boolean);
+        const checked = results.length > 0;
+        const checkedCount = results.length;
+        const okCount = results.filter((r) => r.status === 'ok').length;
+        const failing = results.some((r) => r.status !== 'ok' && draftFallback.includes(r.selector));
         const hops = draftFallback
             .map((s, i) => {
                 const m = model(s);
@@ -260,7 +386,7 @@
                 <li class="hopcard ${skipped ? 'skipped' : ''}">
                     <span class="node" aria-hidden="true">${i + 1}</span>
                     <div class="grow">
-                        <div class="model-name">${esc(modelName(s))} ${m?.vision ? chip('reads images', 'info') : ''} ${skipped ? chip('turned off · skipped', 'warn') : ''}</div>
+                        <div class="model-name">${esc(modelName(s))} ${m?.vision ? chip('reads images', 'info') : ''} ${skipped ? chip('turned off · skipped', 'warn') : ''} ${healthChip(s)}</div>
                         <code class="path">${esc(s)}</code>
                     </div>
                     <div class="actions">
@@ -274,14 +400,23 @@
         return `
             <p class="lead">Backup models are used automatically when the model you picked is busy, out of free requests, or can't read a screenshot. They are tried from top to bottom.</p>
             ${visionInChain ? '' : '<div class="callout warn small" role="alert">None of these backups can read screenshots, so chats with images will fail. Add one marked <strong>reads images</strong>.</div>'}
+            <div class="healthbar">
+                <div><strong>Which models work right now?</strong>
+                <div class="muted small">${checked ? `${okCount} of ${checkedCount} answered with a tool call.` : 'One tiny request per model with your keys. Free models can be busy at times.'}</div></div>
+                <div class="actions">
+                    ${failing ? '<button class="ghost" data-act="working-first" title="Moves models that failed to the bottom. Save to keep it.">Put working first</button>' : ''}
+                    <button class="${checked ? 'ghost' : ''}" data-act="check-models" ${draftFallback.length || state.mainModel ? '' : 'disabled'}>${checked ? 'Check again' : 'Check models'}</button>
+                </div>
+            </div>
             <ol class="chain">
-                <li class="hopcard start"><span class="node" aria-hidden="true">${ICON.play}</span><div class="grow"><div class="model-name">The model you picked</div><div class="muted small">Tried first</div></div></li>
+                <li class="hopcard start"><span class="node" aria-hidden="true">${ICON.play}</span><div class="grow"><div class="model-name">The model you picked ${state.mainModel ? healthChip(state.mainModel) : ''}</div><div class="muted small">${state.mainModel ? `${esc(modelName(state.mainModel))} · tried first` : 'Tried first'}</div></div></li>
                 ${hops || '<li class="hopcard empty"><span class="node" aria-hidden="true">·</span><div class="muted">No backups: when the model fails, you see the error.</div></li>'}
             </ol>
             <div class="toolbar">
                 <select id="add-fallback" aria-label="Model to add" ${addable.length ? '' : 'disabled'}>${addable.map((m) => `<option value="${esc(m.selector)}">${esc(m.name)}${m.vision ? ' · reads images' : ''}</option>`).join('') || '<option>All enabled models are in the chain</option>'}</select>
                 <button class="ghost" data-act="add-fallback" ${addable.length ? '' : 'disabled'}>Add backup</button>
             </div>
+
             <p class="fineprint">Tip: all OpenRouter free models share one daily limit. Keep a model from another provider, like Gemini, at the bottom: it has its own limit and keeps you working when OpenRouter's runs out.</p>
             ${saveBar('save-fallback', 'Save backups')}`;
     }
@@ -320,12 +455,13 @@
                     </div>
                 </div>
                 <div class="top-actions">
-                    ${state.quota ? chip(`${state.quota.remaining}/${state.quota.limit} free left today`, state.quota.remaining > 5 ? '' : 'warn', 'OpenRouter free requests left today, shared by all free models. Resets 00:00 UTC.') : ''}
+                    ${state.quota ? chip(`OpenRouter free: ${state.quota.remaining}/${state.quota.limit} today`, state.quota.remaining > 5 ? '' : 'warn', 'OpenRouter free requests left today, shared by all free models. Resets 00:00 UTC.') : ''}
                     ${chip(state.gateway ? 'Other AI ready' : 'Other AI stopped', state.gateway ? 'ok' : 'warn', state.gateway ? 'The local connection to other AI models is running.' : 'Open the Hoppy menu and choose More → Restart Other AI.')}
                     <button class="ghost" data-act="guide">${ICON.book} Guide</button>
                 </div>
             </header>
             ${routeStrip()}
+            ${limitBanner()}
             ${onboarding()}
             <nav class="tabs" role="tablist" aria-label="Settings sections">
                 ${TABS.map(([id, label]) => `<button role="tab" id="tab-${id}" class="tab" aria-selected="${tab === id}" aria-controls="panel" tabindex="${tab === id ? 0 : -1}" data-tab="${id}">${label}</button>`).join('')}
@@ -366,6 +502,8 @@
                 return vscode.postMessage({ type: 'openGuide' });
             case 'switch':
                 return vscode.postMessage({ type: 'switchTarget', dir: el.dataset.dir });
+            case 'color':
+                return vscode.postMessage({ type: 'setColor', dir: el.dataset.dir, color: el.dataset.color });
             case 'rename':
                 return vscode.postMessage({ type: 'renameAccount', dir: el.dataset.dir });
             case 'add-account':
@@ -374,6 +512,19 @@
                 return vscode.postMessage({ type: 'runSetup' });
             case 'url':
                 return vscode.postMessage({ type: 'openUrl', url: el.dataset.url });
+            case 'edit':
+                editDir = editDir === el.dataset.dir ? null : el.dataset.dir;
+                return render();
+            case 'open-key':
+                openKey = el.dataset.provider;
+                render();
+                document.getElementById(`key-${openKey}`)?.focus();
+                return;
+            case 'close-key':
+                openKey = null;
+                return render();
+            case 'toggle-on':
+                return vscode.postMessage({ type: 'toggleProvider', provider: el.dataset.provider, enabled: true });
             case 'save-key': {
                 const p = el.dataset.provider;
                 const input = document.getElementById(`key-${p}`);
@@ -390,6 +541,19 @@
                 return vscode.postMessage({ type: 'refreshCatalog' });
             case 'save-models':
                 return vscode.postMessage({ type: 'saveModels', enabled: [...draftEnabled], mainModel: draftMain, smallModel: draftSmall });
+            case 'check-models':
+                // The check does not save anything, so unsaved backups must survive its state refresh.
+                keepDraftsOnce = true;
+                // Turned-off models are skipped by the router anyway; checking them would waste free requests.
+                return vscode.postMessage({ type: 'checkModels', models: [...(state.mainModel ? [state.mainModel] : []), ...draftFallback].filter((x) => draftEnabled.has(x)) });
+            case 'working-first': {
+                const rank = (x) => {
+                    const st = (state.health || {})[x]?.status;
+                    return st === 'ok' ? 0 : !st ? 1 : st === 'slow' || st === 'no-tools' ? 2 : 3;
+                };
+                draftFallback = draftFallback.map((x, i) => ({ x, i })).sort((a, b) => rank(a.x) - rank(b.x) || a.i - b.i).map((o) => o.x);
+                return render();
+            }
             case 'save-fallback':
                 return vscode.postMessage({ type: 'saveFallback', models: draftFallback });
             case 'reset':
@@ -469,9 +633,14 @@
     window.addEventListener('message', (e) => {
         const m = e.data;
         if (m.type === 'state') {
+            // Background refreshes (usage numbers, limit changes) must not throw away unsaved edits.
+            const keepDrafts = (keepDraftsOnce || !busy) && !!draftFallback && dirty();
+            keepDraftsOnce = false;
             state = m;
             busy = false;
-            resetDrafts();
+            if (!keepDrafts) {
+                resetDrafts();
+            }
             if (toast?.kind === 'busy') {
                 toast = null;
             }
@@ -489,8 +658,12 @@
             render();
         } else if (m.type === 'keyResult') {
             keyResults[m.provider] = { ok: m.ok, message: m.message };
+            if (m.ok && openKey === m.provider) {
+                openKey = null;
+            }
             render();
         } else if (m.type === 'focusKey') {
+            openKey = m.provider;
             setTab('providers');
             document.getElementById(`key-${m.provider}`)?.focus();
         }

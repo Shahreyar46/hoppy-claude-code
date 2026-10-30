@@ -1,0 +1,212 @@
+{
+  "voice": {
+    "provider": "auto",
+    "edge": "en-US-AndrewNeural",
+    "rate": "-7%",
+    "style": "Friendly, calm teacher. Clear, unhurried, says exactly what to click."
+  },
+  "lead_in": 0.6,
+  "gap": 1.0,
+  "lines": [
+    {
+      "id": "i1",
+      "text": "Here is the complete, step by step guide to Hoppy.",
+      "pause": 1.3
+    },
+    {
+      "id": "in1",
+      "text": "First, install it. Open Extensions, and search for Hoppy for Claude Code."
+    },
+    {
+      "id": "in2",
+      "text": "Click Install.",
+      "pause": 1.3
+    },
+    {
+      "id": "in3",
+      "text": "VS Code asks if you trust the publisher. Click Trust Publisher and Install."
+    },
+    {
+      "id": "in4",
+      "text": "Hoppy installs, opens a short guide, and appears in the status bar.",
+      "pause": 1.3
+    },
+    {
+      "id": "sw1",
+      "text": "Click Claude in the status bar. The Hoppy menu opens at the top."
+    },
+    {
+      "id": "sw2",
+      "text": "Each account shows the tokens it used in the last five hours, today, and this week."
+    },
+    {
+      "id": "sw3",
+      "text": "Pick Personal. A new Claude tab opens on it right away, with no reload.",
+      "pause": 1.3
+    },
+    {
+      "id": "ac1",
+      "text": "To add a Claude account, choose Add Claude account."
+    },
+    {
+      "id": "ac2",
+      "text": "Give it a name, like Side project."
+    },
+    {
+      "id": "ac3",
+      "text": "A new Claude tab opens. Log in there with that account. Each account keeps its own login.",
+      "pause": 1.3
+    },
+    {
+      "id": "st1",
+      "text": "Open Settings from the menu. Accounts shows every account and its usage."
+    },
+    {
+      "id": "st2",
+      "text": "Claude panel uses, at the top, switches where new tabs open."
+    },
+    {
+      "id": "st3",
+      "text": "Click Edit to rename an account, or to pick a status bar color.",
+      "pause": 1.3
+    },
+    {
+      "id": "li1",
+      "text": "Now a real example. You are deep in a task on Work. Open it again from Claude's history."
+    },
+    {
+      "id": "li2",
+      "text": "Ask for the next change, and Work hits its weekly limit."
+    },
+    {
+      "id": "li3",
+      "text": "Hoppy notices at once, and asks where to keep going."
+    },
+    {
+      "id": "li4",
+      "text": "Click Continue on Other AI.",
+      "pause": 1.3
+    },
+    {
+      "id": "li5",
+      "text": "The same chat opens on Other AI, with everything that came before."
+    },
+    {
+      "id": "li6",
+      "text": "Ask it to carry on, and it does. It adds the cart badge to App dot T S X."
+    },
+    {
+      "id": "li7",
+      "text": "Work shows when its limit resets, and Hoppy tells you when it is back.",
+      "pause": 1.3
+    },
+    {
+      "id": "co1",
+      "text": "Your chats travel with you. Switch to Personal, and open Claude's history."
+    },
+    {
+      "id": "co2",
+      "text": "The same chats are there. Pick one, and keep going on this account."
+    },
+    {
+      "id": "co3",
+      "text": "You can also move any chat yourself, with Continue a chat in the Hoppy menu.",
+      "pause": 1.3
+    },
+    {
+      "id": "pr1",
+      "text": "To add other AI models, open Settings, then AI Providers."
+    },
+    {
+      "id": "pr2",
+      "text": "Connected services are at the top. More are listed below."
+    },
+    {
+      "id": "pr3",
+      "text": "Click Connect. Get a key, paste it, and click Test and save."
+    },
+    {
+      "id": "pr4",
+      "text": "Hoppy checks every key before it saves it, and keys never leave this computer.",
+      "pause": 1.3
+    },
+    {
+      "id": "mo1",
+      "text": "In Models, pick a main model for the real work, and a helper for small jobs."
+    },
+    {
+      "id": "mo2",
+      "text": "Tick the models you want, then click Save models.",
+      "pause": 1.3
+    },
+    {
+      "id": "bk1",
+      "text": "Backups take over when a model is busy, or out of free requests."
+    },
+    {
+      "id": "bk2",
+      "text": "Click Check models, to see which ones work right now."
+    },
+    {
+      "id": "bk3",
+      "text": "Today, OpenRouter's free requests are used up, and Hoppy shows exactly that, model by model. Put working first moves the ones that answer to the top.",
+      "pause": 1.3
+    },
+    {
+      "id": "oa1",
+      "text": "To use other models directly, pick Other AI in the Hoppy menu."
+    },
+    {
+      "id": "oa2",
+      "text": "Type slash model, to choose a model.",
+      "pause": 1.3
+    },
+    {
+      "id": "ex1",
+      "text": "Control Alt H flips back to the account you used before."
+    },
+    {
+      "id": "ex2",
+      "text": "Always use this account in this project pins a project to an account."
+    },
+    {
+      "id": "ex3",
+      "text": "In More, you will find Export settings, and the second opinion skill.",
+      "pause": 1.3
+    },
+    {
+      "id": "xp1",
+      "text": "Export settings saves your setup to a file."
+    },
+    {
+      "id": "xp2",
+      "text": "It holds your models, backups, and account names. Never keys, and never logins."
+    },
+    {
+      "id": "xp3",
+      "text": "On another computer, choose Import settings."
+    },
+    {
+      "id": "xp4",
+      "text": "Your names, colors and choices arrive. Add your keys there, and you are ready.",
+      "pause": 1.3
+    },
+    {
+      "id": "pv1",
+      "text": "Hoppy never touches your Claude login, and Claude is never billed twice."
+    },
+    {
+      "id": "pv2",
+      "text": "Usage and limit checks read only local files.",
+      "pause": 1.3
+    },
+    {
+      "id": "out1",
+      "text": "That's Hoppy for Claude Code."
+    },
+    {
+      "id": "out2",
+      "text": "Free on the VS Code Marketplace."
+    }
+  ]
+}

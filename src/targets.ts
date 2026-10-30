@@ -22,8 +22,10 @@ function claudeCodeConfig() {
     return vscode.workspace.getConfiguration('claudeCode');
 }
 
-function sameDir(a: string, b: string): boolean {
-    return path.normalize(a).toLowerCase() === path.normalize(b).toLowerCase();
+/** Same folder, ignoring case and a trailing separator (CLAUDE_CONFIG_DIR is often set with one). */
+export function sameDir(a: string, b: string): boolean {
+    const norm = (p: string) => path.normalize(p).replace(/[\\/]+$/, '').toLowerCase();
+    return norm(a) === norm(b);
 }
 
 function readEmail(dir: string): string | undefined {
@@ -87,13 +89,81 @@ export function isCurrent(t: Target): boolean {
  * explicit ~/.claude path would skip (and could prompt for a fresh login).
  */
 export async function setTarget(t: Target): Promise<void> {
+    await claudeCodeConfig().update('environmentVariables', envFor(t), vscode.ConfigurationTarget.Global);
+    // Switching inside a pinned project moves its pin along, so "this project uses X" stays true.
+    if (isProjectPinned()) {
+        await pinProject(t);
+    }
+}
+
+function envFor(t: Target): EnvVar[] {
     const env = (claudeCodeConfig().get<EnvVar[]>('environmentVariables') || []).filter((e) => e.name !== 'CLAUDE_CONFIG_DIR');
     const isDefault = sameDir(t.dir, path.join(os.homedir(), '.claude'));
     const inherited = process.env.CLAUDE_CONFIG_DIR;
     if (!isDefault || (inherited && !sameDir(inherited, t.dir))) {
         env.push({ name: 'CLAUDE_CONFIG_DIR', value: t.dir });
     }
-    await claudeCodeConfig().update('environmentVariables', env, vscode.ConfigurationTarget.Global);
+    return env;
+}
+
+// Claude Code reads its environment from User settings only, so a project cannot carry its own copy.
+// Hoppy keeps "project folder -> account folder" and points the panel there when the project's window
+// opens or gets focus.
+
+function projectFolder(): string | undefined {
+    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+}
+
+function projectAccounts(): Record<string, string> {
+    return vscode.workspace.getConfiguration('hoppy').get<Record<string, string>>('projectAccounts') || {};
+}
+
+/** Account folder pinned to the open project, if any. */
+export function pinnedDir(): string | undefined {
+    const folder = projectFolder();
+    if (!folder) {
+        return undefined;
+    }
+    const map = projectAccounts();
+    const key = Object.keys(map).find((k) => sameDir(k, folder));
+    return key ? map[key] : undefined;
+}
+
+export function isProjectPinned(): boolean {
+    return !!pinnedDir();
+}
+
+export async function pinProject(t: Target): Promise<void> {
+    const folder = projectFolder();
+    if (!folder) {
+        return;
+    }
+    const map = Object.fromEntries(Object.entries(projectAccounts()).filter(([k]) => !sameDir(k, folder)));
+    map[folder] = t.dir;
+    await vscode.workspace.getConfiguration('hoppy').update('projectAccounts', map, vscode.ConfigurationTarget.Global);
+}
+
+export async function unpinProject(): Promise<void> {
+    const folder = projectFolder();
+    if (!folder) {
+        return;
+    }
+    const map = Object.fromEntries(Object.entries(projectAccounts()).filter(([k]) => !sameDir(k, folder)));
+    await vscode.workspace.getConfiguration('hoppy').update('projectAccounts', map, vscode.ConfigurationTarget.Global);
+}
+
+/** Points the panel at the project's pinned account. Returns the target when it had to switch. */
+export async function applyProjectPin(): Promise<Target | undefined> {
+    const dir = pinnedDir();
+    if (!dir || sameDir(dir, currentDir())) {
+        return undefined;
+    }
+    const t = listTargets().find((x) => sameDir(x.dir, dir));
+    if (!t) {
+        return undefined;
+    }
+    await claudeCodeConfig().update('environmentVariables', envFor(t), vscode.ConfigurationTarget.Global);
+    return t;
 }
 
 /** Creates the next free ~/.claude-accountN folder for a new Claude login. */
@@ -116,4 +186,28 @@ export async function setLabel(t: Target, label: string): Promise<void> {
 
 export function describe(t: Target): string {
     return t.kind === 'other' ? 'Other AI' : `Claude · ${t.label}`;
+}
+
+/** Colors offered in Settings; picked to read well on both light and dark status bars. */
+export const ACCOUNT_COLORS = ['#FF6B8B', '#FFB38A', '#E5C07B', '#89D185', '#4EC9B0', '#B180D7'];
+
+export function colorFor(dir: string): string | undefined {
+    const colors = vscode.workspace.getConfiguration('hoppy').get<Record<string, string>>('accountColors') || {};
+    const key = Object.keys(colors).find((k) => sameDir(k.replace(/^~/, os.homedir()), dir));
+    return key ? colors[key] : undefined;
+}
+
+/** Saves a color for an account folder; an empty color removes it. Only known colors are accepted. */
+export async function setColor(dir: string, color: string): Promise<void> {
+    const cfg = vscode.workspace.getConfiguration('hoppy');
+    const colors = { ...(cfg.get<Record<string, string>>('accountColors') || {}) };
+    for (const k of Object.keys(colors)) {
+        if (sameDir(k.replace(/^~/, os.homedir()), dir)) {
+            delete colors[k];
+        }
+    }
+    if (ACCOUNT_COLORS.includes(color)) {
+        colors[dir] = color;
+    }
+    await cfg.update('accountColors', colors, vscode.ConfigurationTarget.Global);
 }

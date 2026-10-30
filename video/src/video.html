@@ -46,7 +46,7 @@
   .qpi .d{margin-left:auto;font-size:21px;color:var(--mute)}
   .sep{height:1px;background:#3a3d46;margin:8px 4px}
   /* overlays */
-  #cap{position:absolute;left:0;right:0;bottom:46px;text-align:center;font:500 38px Geist;color:#e9e6e0;letter-spacing:-.01em;text-shadow:0 2px 18px rgba(0,0,0,.85)}
+  #cap{position:absolute;left:50%;bottom:40px;text-align:center;font:600 44px Geist;color:#fff;letter-spacing:-.01em;background:rgba(13,14,18,.78);padding:12px 30px;border-radius:16px;white-space:nowrap;box-shadow:0 10px 40px rgba(0,0,0,.5)}
   #chap{position:absolute;left:64px;top:52px;display:flex;align-items:center;gap:16px}
   #chap .n{font:600 28px 'Geist Mono';color:var(--peach)}
   #chap .t{font:600 32px Geist}
@@ -76,55 +76,92 @@
     <div class="abs" id="flash0" style="left:0;top:0;width:1920px;height:1080px;background:#fff;opacity:0"></div>
   </div>
 
-  <!-- 1 questions -->
-  <div class="scene" id="s1">
-    <div class="abs mono" id="qn1" style="left:0;right:0;top:140px;text-align:center;font-size:32px;color:var(--peach)"></div>
-    <div class="row" style="gap:90px;align-items:center">
-      <div style="position:relative;width:860px;height:420px">
-        <div class="abs h1 qt" id="qt1" style="font-size:84px;width:860px;line-height:1.08">Ran out of Claude tokens in the middle of a task?</div>
-        <div class="abs h1 qt" id="qt2" style="font-size:84px;width:860px;line-height:1.08">Juggling more than one Claude account?</div>
-        <div class="abs h1 qt" id="qt3" style="font-size:84px;width:860px;line-height:1.08">Lost your session, and all its context?</div>
-        <div class="abs h1 qt" id="qt4" style="font-size:84px;width:860px;line-height:1.08">Wish you could use other AI models too?</div>
+  <!-- hook: the real problem, in a real editor -->
+  <div class="scene" id="hook">
+    <div class="win" id="wH" style="width:1180px;height:700px;zoom:1.2">
+      <div class="tb"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><b>Visual Studio Code · Claude Code</b></div>
+      <div class="col" style="padding:34px 44px;gap:20px">
+        <div class="bubble me">Add dark mode to the settings page</div>
+        <div class="bubble ai" style="max-width:none;width:1000px">
+          <div class="row" style="gap:12px;margin-bottom:6px;font:600 22px Geist;color:var(--coral)" id="aiHeadH"></div>
+          <div id="codeH"></div>
+        </div>
       </div>
-      <div style="position:relative;width:620px;height:460px;zoom:1.2">
-        <div class="abs card" id="v1" style="left:0;top:40px;width:620px;padding:30px">
-          <div class="row" style="gap:14px;font:700 30px Geist"><span>✦</span>Claude · Work</div>
-          <div class="muted" style="font-size:24px;margin:18px 0 10px">Tokens left</div>
-          <div style="height:22px;border-radius:11px;background:#2b2e37;overflow:hidden"><div id="meter1" style="height:100%;width:100%;background:linear-gradient(90deg,#FFC27A,#FF6B8B)"></div></div>
-          <div class="mono" id="meterN1" style="font-size:34px;margin-top:10px">100%</div>
-          <div class="card" id="lim1" style="margin-top:22px;padding:18px 22px;border-color:rgba(255,95,87,.6);background:#2a1517;font:700 28px Geist;color:#ff8a80">✕ Usage limit reached</div>
+      <div class="abs card" id="limH" style="left:90px;right:90px;bottom:60px;padding:24px 30px;border-color:rgba(255,95,87,.6);background:#2a1517">
+        <div class="row" style="gap:18px"><span id="limIcoH"></span><div><div style="font:700 34px Geist;color:#ff8a80">You've hit your usage limit</div><div class="muted" style="font-size:24px;margin-top:4px">Resets in 5 hours</div></div></div>
+      </div>
+    </div>
+    <div class="abs col" id="nowH" style="left:0;right:0;top:300px;align-items:center;gap:18px">
+      <div class="h1" style="font-size:150px" id="nowT">Now what?</div>
+      <div class="row" style="gap:22px;font:700 64px Geist;color:#ff8a80" id="waitT"><span id="clockH"></span>Wait 5 hours?</div>
+    </div>
+  </div>
+
+  <!-- what Hoppy is, in one sentence -->
+  <div class="scene" id="what">
+    <div class="col" style="align-items:center;gap:56px">
+      <div class="h1" style="font-size:84px;text-align:center;line-height:1.1;width:1700px" id="whatT"><span style="white-space:nowrap">Switch Claude accounts <span class="grad">and AI models</span></span><br>in one click, inside VS Code.</div>
+      <div style="position:relative;width:900px;height:300px">
+        <div class="card abs" id="whatList" style="left:250px;top:0;width:420px;padding:10px;background:#202329">
+          <div class="qpi" id="wl1"><span>✦</span>Claude · Work<span class="d" style="color:var(--ok)">✓</span></div>
+          <div class="qpi" id="wl2"><span>✦</span>Claude · Personal</div>
+          <div class="qpi" id="wl3"><span id="wl3i"></span>Other AI</div>
         </div>
-        <div class="abs col" id="v2" style="left:0;top:40px;width:620px;gap:20px;align-items:center">
-          <div class="card row" style="width:520px;padding:20px;gap:18px"><div class="av" style="background:#d18616">W</div><div style="font:700 30px Geist">Work account</div></div>
-          <div class="row" style="gap:16px;font:600 26px Geist;color:#f5a524" id="loop2"><span id="loopI2"></span>log out · log in · repeat</div>
-          <div class="card row" style="width:520px;padding:20px;gap:18px"><div class="av" style="background:#d18616">P</div><div style="font:700 30px Geist">Personal account</div></div>
-        </div>
-        <div class="abs col" id="v3" style="left:0;top:20px;width:620px;gap:16px">
-          <div class="bubble me b3" style="font-size:26px">Add dark mode to settings</div>
-          <div class="bubble ai b3" style="font-size:26px">Done. Theme toggle added.</div>
-          <div class="bubble me b3" style="font-size:26px">Now update the tests</div>
-          <span class="chip bad" id="lost3" style="align-self:flex-start;font-size:28px">✕ Context lost</span>
-        </div>
-        <div class="abs" id="v4" style="left:0;top:40px;width:620px">
-          <div class="row" style="gap:20px;flex-wrap:wrap" id="tiles4"></div>
-          <span class="chip" id="lock4" style="margin-top:26px;font-size:26px"></span>
+        <div class="abs" style="left:0;right:0;bottom:0;height:48px;border-radius:10px;background:#007acc;display:flex;justify-content:flex-end;align-items:center;padding-right:18px">
+          <div class="sbi" id="whatSb" style="font-size:24px"><span>✦</span><span id="whatSbT">Claude · Work</span></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 2 the fix -->
-  <div class="scene" id="s2">
-    <div class="col" style="align-items:center;gap:56px">
-      <div class="row" style="gap:28px" id="fixT">
-        <div id="logo2" style="width:120px;height:120px;border-radius:32px;background:linear-gradient(135deg,#FFC27A,#FF6B8B);display:flex;align-items:center;justify-content:center"></div>
-        <div class="h1" style="font-size:92px">Here's the fix.</div>
+  <!-- three benefits -->
+  <div class="scene" id="b1s">
+    <div class="row" style="gap:110px;align-items:center">
+      <div class="col" style="width:720px;gap:14px"><div class="mono" style="font-size:120px;font-weight:800;color:var(--peach);line-height:1">01</div><div class="h1" style="font-size:86px;white-space:normal">Switch accounts instantly</div><div class="chip ok" id="b1chip" style="align-self:flex-start;font-size:32px">✓ No reload</div></div>
+      <div class="card" style="width:620px;padding:14px;background:#202329;zoom:1.25" id="b1v">
+        <div class="qpi" id="b1r1"><span>✦</span>Claude · Work<span class="d">in use</span></div>
+        <div class="qpi" id="b1r2"><span>✦</span>Claude · Personal<span class="d">me@gmail.com</span></div>
+        <div class="qpi" id="b1r3"><span id="b1r3i"></span>Other AI<span class="d">your API keys</span></div>
+        <div class="sep"></div>
+        <div class="qpi" id="b1tab" style="color:var(--peach)">＋ New Claude tab · Personal</div>
       </div>
-      <div class="row" style="gap:30px;align-items:stretch">
-        <div class="card col sol" id="sol1" style="width:500px;padding:36px;gap:18px"><div class="tile" id="solI1" style="width:76px;height:76px;background:rgba(255,194,122,.15)"></div><div style="font:700 36px Geist;line-height:1.2">All your Claude accounts, in one place</div></div>
-        <div class="card col sol" id="sol2" style="width:500px;padding:36px;gap:18px"><div class="tile" id="solI2" style="width:76px;height:76px;background:rgba(55,148,255,.15)"></div><div style="font:700 36px Geist;line-height:1.2">Other AI models, with your own keys</div></div>
-        <div class="card col sol" id="sol3" style="width:500px;padding:36px;gap:18px"><div class="tile" id="solI3" style="width:76px;height:76px;background:rgba(63,185,80,.15)"></div><div style="font:700 36px Geist;line-height:1.2">Chats and context, never lost</div></div>
+    </div>
+  </div>
+  <div class="scene" id="b2s">
+    <div class="row" style="gap:110px;align-items:center">
+      <div class="col" style="width:720px;gap:14px"><div class="mono" style="font-size:120px;font-weight:800;color:var(--peach);line-height:1">02</div><div class="h1" style="font-size:86px;white-space:normal">Your chat comes with you</div><div class="chip ok" id="b2chip" style="align-self:flex-start;font-size:32px">✓ Pick up where you stopped</div></div>
+      <div class="win" style="width:600px;height:520px;zoom:1.2" id="b2v"><div class="tb"><b style="margin:0">✦ Claude · Personal</b></div>
+        <div class="col" style="padding:22px;gap:12px" id="b2msgs">
+          <div class="bubble me" style="font-size:22px">Add dark mode to settings</div>
+          <div class="bubble ai" style="font-size:22px">Done. Theme toggle added.</div>
+          <div class="bubble me" style="font-size:22px">Now update the tests</div>
+        </div>
+        <div class="abs card mono" id="b2in" style="left:20px;right:20px;bottom:20px;padding:14px 18px;font-size:26px;border-color:#0e639c"></div>
       </div>
+    </div>
+  </div>
+  <div class="scene" id="b3s">
+    <div class="row" style="gap:110px;align-items:center">
+      <div class="col" style="width:720px;gap:14px"><div class="mono" style="font-size:120px;font-weight:800;color:var(--peach);line-height:1">03</div><div class="h1" style="font-size:86px;white-space:normal">Other AI models, your own keys</div><div class="row" style="gap:14px"><span class="chip ok" id="b3free" style="font-size:32px">Free</span><span class="chip info" id="b3paid" style="font-size:32px">Paid</span></div></div>
+      <div class="col" style="gap:22px;width:620px" id="b3v"></div>
+    </div>
+  </div>
+
+  <!-- get it -->
+  <div class="scene" id="get">
+    <div class="col" style="align-items:center;gap:40px">
+      <div class="row" style="gap:36px"><div id="logoG" style="width:150px;height:150px;border-radius:40px;background:linear-gradient(135deg,#FFC27A,#FF6B8B);display:flex;align-items:center;justify-content:center;box-shadow:0 30px 80px -20px rgba(255,107,139,.6)"></div><div class="h1" style="font-size:130px">Hoppy</div></div>
+      <div class="chip" id="pillG" style="font:700 44px Geist;padding:18px 44px;border:2px solid var(--peach);color:var(--peach)">Free on the VS Code Marketplace</div>
+      <div class="card row" id="srchG" style="padding:16px 26px;gap:16px;font:500 36px Geist;background:#121419;border-color:#0e639c"><span id="srchGI"></span>Hoppy for Claude Code</div>
+    </div>
+  </div>
+
+  <!-- part 2 title -->
+  <div class="scene" id="tut">
+    <div class="col" style="align-items:center;gap:34px">
+      <div class="mono" style="font-size:34px;color:var(--peach);letter-spacing:.2em">FULL GUIDE</div>
+      <div class="h1" style="font-size:140px" id="tutT">Let's set it up</div>
+      <div class="row" style="gap:14px;flex-wrap:wrap;justify-content:center;width:1400px" id="tutChips"></div>
     </div>
   </div>
 
@@ -319,6 +356,8 @@
     </div>
   </div>
 
+  <div class="abs" id="dimT" style="left:0;top:0;width:1920px;height:1080px;background:#0d0e12;opacity:0"></div>
+  <div class="abs col" id="bigT" style="left:0;top:0;width:1920px;height:1080px;align-items:center;justify-content:center;gap:10px;opacity:0"><div class="mono" id="bigN" style="font-size:44px;color:var(--peach);letter-spacing:.15em"></div><div class="h1" id="bigTT" style="font-size:130px"></div></div>
   <div id="chap"><span class="n" id="chapN"></span><span class="t" id="chapT"></span><span class="dots" id="chapD"></span></div>
   <div id="cap"></div>
   <div id="cursor"></div>
@@ -349,12 +388,15 @@ const hide = (el) => { el.style.opacity = 0; };
 
 /* scenes: [id, in, chapter title] */
 const S = (id, a) => ({ id, el: $(id), a });
+const TS = L('meet').start - 2.75;           // storm starts after the hook
 const SC = [
-  S('s0', 0), S('s1', L('q1').start - 0.35), S('s2', L('fix').start - 0.35), S('s3', L('inst1').start - 0.35),
+  S('hook', 0), S('s0', TS - 0.05), S('what', L('what1').start - 0.35), S('b1s', L('b1').start - 0.3), S('b2s', L('b2').start - 0.3),
+  S('b3s', L('b3').start - 0.3), S('get', L('get1').start - 0.3), S('tut', L('tut0').start - 0.3), S('s3', L('inst1').start - 0.35),
   S('s4', L('sw1').start - 0.35), S('s5', L('ac1').start - 0.35), S('s6', L('ch1').start - 0.35), S('s7', L('co1').start - 0.35),
   S('s8', L('oa1').start - 0.35), S('s9', L('mo1').start - 0.35), S('s10', L('bk1').start - 0.35), S('s11', L('so1').start - 0.35),
   S('s12', L('sa1').start - 0.35), S('s13', L('out1').start - 0.3),
 ];
+const SCI = Object.fromEntries(SC.map((x) => [x.id, x]));
 SC.forEach((s, i) => (s.b = i < SC.length - 1 ? SC[i + 1].a : END + 1));
 SC.slice(1).forEach((s, i) => M.cue(s.a - 0.12, 'whoosh', { g: 0.42, d: 0.5, pan: i % 2 ? 0.35 : -0.35 }));
 
@@ -362,16 +404,16 @@ SC.slice(1).forEach((s, i) => M.cue(s.a - 0.12, 'whoosh', { g: 0.42, d: 0.5, pan
 const CH = [['s3', 'Install'], ['s4', 'Switch'], ['s5', 'Accounts'], ['s6', 'Shared chats'], ['s7', 'Keep going'], ['s8', 'AI providers'], ['s9', 'Models'], ['s10', 'Backups'], ['s11', 'Second opinion'], ['s12', 'Trust']];
 $('chapD').innerHTML = CH.map(() => '<i></i>').join('');
 const chapDots = [...$('chapD').children];
-const chapAt = (t) => { let c = -1; CH.forEach(([id], i) => { const s = SC.find((x) => x.id === id); if (t >= s.a) c = i; }); return t >= SC[13].a - 0.2 ? -1 : c; };
+const chapAt = (t) => { let c = -1; CH.forEach(([id], i) => { const s = SC.find((x) => x.id === id); if (t >= s.a) c = i; }); return t >= SCI.s13.a - 0.2 ? -1 : c; };
 CH.forEach(([id]) => M.cue(SC.find((x) => x.id === id).a + 0.25, 'tick', { g: 0.35, pan: -0.6 }));
 
 /* captions: the spoken line, cleaned for reading */
 const CAP = (s) => s.replace('V S I X', 'VSIX').replace('G L M', 'GLM').replace('slash resume', '/resume');
 
 /* ---------- 0 intro: storm -> icon + wordmark ---------- */
-const tForm = 4.55;                                  // everything collapses into the icon here
+const tForm = TS + 2.6;                                  // everything collapses into the icon here
 const tMeet = w('meet', 'hoppy');
-$('logo0').innerHTML = BUN(170); $('logo2').innerHTML = BUN(96); $('logo13').innerHTML = BUN(136); $('extIco').innerHTML = BUN(60);
+$('logo0').innerHTML = BUN(170); $('logo13').innerHTML = BUN(136); $('extIco').innerHTML = BUN(60);
 const wm0 = M.split($('wm0'), 'chars');
 const CX = 960, CY = 470;                            // storm eye, roughly where the icon sits
 const rr = M.rand(21);
@@ -382,11 +424,11 @@ $('clouds0').innerHTML = CLOUDS.map((c) => `<div style="position:absolute;width:
 const cloudEls = [...$('clouds0').children];
 // shards: glowing fragments spiralling into the eye
 const SH_C = ['#FFC27A', '#FF6B8B', '#ffffff', '#FFB3C7'];
-const SHARDS = Array.from({ length: 90 }, (_, i) => ({ a: rr() * Math.PI * 2, r0: 1100 + rr() * 500, ts: 0.15 + rr() * 1.6, ta: tForm - 0.12 + rr() * 0.1, sz: 8 + rr() * 22, c: SH_C[i % 4], spin: (rr() - 0.5) * 8, swirl: 2.2 + rr() * 1.6 }));
+const SHARDS = Array.from({ length: 90 }, (_, i) => ({ a: rr() * Math.PI * 2, r0: 1100 + rr() * 500, ts: TS + 0.05 + rr() * 1.3, ta: tForm - 0.12 + rr() * 0.1, sz: 8 + rr() * 22, c: SH_C[i % 4], spin: (rr() - 0.5) * 8, swirl: 2.2 + rr() * 1.6 }));
 $('shards0').innerHTML = SHARDS.map((s) => `<div style="position:absolute;width:${s.sz}px;height:${s.sz * 0.55}px;background:${s.c};clip-path:polygon(0 50%,40% 0,100% 30%,70% 100%);box-shadow:0 0 18px ${s.c}"></div>`).join('');
 const shardEls = [...$('shards0').children];
 // lightning: jagged bolts from the edges towards the eye
-const BOLT_T = [0.75, 1.45, 2.2, 2.85, 3.45, 4.05];
+const BOLT_T = [0.25, 0.7, 1.15, 1.6, 2.0, 2.35].map((x) => TS + x);
 const boltPath = (seed) => {
   const r = M.rand(seed), side = Math.floor(r() * 4);
   let x = side === 0 ? r() * 1920 : side === 1 ? 1920 : side === 2 ? r() * 1920 : 0;
@@ -398,33 +440,55 @@ const boltPath = (seed) => {
 $('bolts0').innerHTML = BOLT_T.map((_, i) => `<g class="bolt"><path d="${boltPath(40 + i)}" fill="none" stroke="#FFC27A" stroke-width="16" stroke-linejoin="round" opacity=".35"/><path d="${boltPath(40 + i)}" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></g>`).join('');
 const bolts = [...$('bolts0').querySelectorAll('.bolt')];
 // sound: a rising storm that implodes into a hit
-M.cue(0.05, 'whoosh', { g: 0.35, d: 4.2, exact: true });
-M.cue(tForm, 'riser', { g: 0.5, d: 3.6 });
+M.cue(TS + 0.05, 'whoosh', { g: 0.35, d: 2.6, exact: true });
+M.cue(tForm, 'riser', { g: 0.5, d: 2.4 });
 BOLT_T.forEach((b, i) => { M.cue(b, 'impact', { g: 0.32 + i * 0.03, pan: (i % 2 ? 0.5 : -0.5) }); M.cue(b, 'glitch', { g: 0.3 }); M.cue(b + 0.02, 'sub', { g: 0.35 }); });
 M.cue(tForm, 'suck', { g: 0.55, d: 0.7 });
 M.cue(tForm + 0.02, 'impact', { g: 0.9 }); M.cue(tForm + 0.02, 'sub', { g: 0.9 }); M.cue(tForm + 0.08, 'reveal', { g: 0.75 });
 M.cue(tForm + 0.35, 'shimmer', { g: 0.5 }); M.cue(tMeet, 'chime', { g: 0.45 });
 
-/* ---------- 1 questions ---------- */
-const QID = ['q1', 'q2', 'q3', 'q4'];
-const qt = QID.map((id, i) => ({ el: $('qt' + (i + 1)), sp: M.split($('qt' + (i + 1))), times: M.words$(id), a: L(id).start - 0.25, b: i < 3 ? L(QID[i + 1]).start - 0.25 : L('fix').start - 0.3, v: $('v' + (i + 1)) }));
-$('loopI2').innerHTML = M.icon('arrow', 30, '#f5a524', 2.4);
-const PROV4 = [['OR', '#b180d7'], ['G', '#3794ff'], ['DS', '#89d185'], ['Z', '#d18616']];
-$('tiles4').innerHTML = PROV4.map(([m, c]) => `<div class="tile" style="width:130px;height:130px;font-size:36px;color:${c};background:${c}18;border:2px dashed ${c}66">${m}</div>`).join('');
-$('lock4').innerHTML = M.icon('lock', 26, '#8b8f98', 2.4) + ' Not in your Claude panel';
-const b3 = [...document.querySelectorAll('.b3')];
-const tTok = w('q1', 'tokens'), tTask = w('q1', 'task'), tAcc2 = w('q2', 'account'), tCtx = w('q3', 'context'), tToo = w('q4', 'too');
-qt.forEach((q, i) => { M.cue(q.a + 0.05, 'swish', { g: 0.45, pan: 0.3 }); M.cue(q.a + 0.15, 'tick', { g: 0.4, pan: -0.6 }); });
-M.cue(tTok - 0.2, 'roll', { g: 0.4, d: 1.0 }); M.cue(tTask, 'error', { g: 0.55 });
-M.cue(tAcc2, 'swipe', { g: 0.45 }); M.cue(tAcc2 + 0.3, 'error', { g: 0.35 });
-M.cue(tCtx, 'glitch', { g: 0.5 }); M.cue(tCtx + 0.1, 'error', { g: 0.4 });
-M.cue(tToo, 'thud', { g: 0.5 });
+/* ---------- hook: coding with Claude, then the limit ---------- */
+$('aiHeadH').innerHTML = SPARK(22, '#FF6B8B') + 'Claude';
+$('codeH').innerHTML = [92, 74, 86, 60, 80, 52].map((x) => `<div class="codeln" style="width:${x}%"></div>`).join('');
+const codeH = [...$('codeH').children];
+$('limIcoH').innerHTML = M.icon('x', 48, '#ff8a80', 2.6);
+$('clockH').innerHTML = `<svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#ff8a80" stroke-width="2"><circle cx="12" cy="12" r="10"/><path id="clockHand" d="M12 12 V6" stroke-linecap="round"/><path id="clockHand2" d="M12 12 H16" stroke-linecap="round"/></svg>`;
+const nowT = M.split($('nowT'));
+const tTypeH = L('h1').start + 0.1, tLimH = w('h2', 'limit'), tNow = w('h3', 'now'), tWait = w('h3', 'wait');
+codeH.forEach((_, i) => M.cue(tTypeH + i * 0.22, 'key', { g: 0.25, pitch: 1 + i * 0.03 }));
+M.cue(tLimH, 'impact', { g: 0.75 }); M.cue(tLimH + 0.02, 'glitch', { g: 0.55 }); M.cue(tLimH + 0.05, 'error', { g: 0.4 });
+M.cue(tNow, 'thud', { g: 0.6 }); M.cue(tWait, 'tick', { g: 0.5 }); M.cue(tWait + 0.25, 'tick', { g: 0.45 }); M.cue(tWait + 0.5, 'tick', { g: 0.4 });
 
-/* ---------- 2 the fix ---------- */
-$('solI1').innerHTML = M.icon('user', 42, '#FFC27A', 2.2); $('solI2').innerHTML = M.icon('globe', 42, '#3794ff', 2.2); $('solI3').innerHTML = M.icon('clock', 42, '#3fb950', 2.2);
-const tFix = L('fix').start, tSol = [w('sol1', 'place'), w('sol2', 'keys'), w('sol3', 'lost')];
-M.cue(tFix - 0.05, 'impact', { g: 0.6 }); M.cue(tFix + 0.05, 'shimmer', { g: 0.45 });
-tSol.forEach((x, i) => M.cue(x - 0.15, 'pop', { g: 0.6, pan: -0.5 + i * 0.5 })); M.cue(tSol[2] + 0.2, 'success', { g: 0.6 });
+/* ---------- what Hoppy is ---------- */
+$('wl3i').innerHTML = M.icon('globe', 24, '#3794ff', 2.2);
+const tWhat = L('what1').start, tWhatClick = w('what1', 'click'), tWhatVS = w('what1', 'inside');
+M.cue(tWhat, 'swish', { g: 0.5 }); M.cue(tWhatClick, 'click', { g: 0.6 }); M.cue(tWhatClick + 0.12, 'pop', { g: 0.5 });
+M.cue(tWhatClick + 0.7, 'tick', { g: 0.4 }); M.cue(tWhatClick + 1.2, 'click', { g: 0.5 });
+
+/* ---------- three benefits ---------- */
+$('b1r3i').innerHTML = M.icon('globe', 24, '#3794ff', 2.2);
+const tB1 = L('b1').start, tB1Pick = w('b1', 'instantly'), tB1No = w('b1', 'reload');
+const tB2 = L('b2').start, tB2Res = w('b2', 'resume'), tB2With = w('b2', 'you');
+const tB3 = L('b3').start, tB3Keys = w('b3', 'keys'), tB3Free = w('b3', 'free'), tB3Paid = w('b3', 'paid');
+const PROVB3 = [['OR', 'OpenRouter', '#b180d7'], ['G', 'Gemini', '#3794ff'], ['DS', 'DeepSeek', '#89d185'], ['Z', 'GLM (Z.ai)', '#d18616']];
+$('b3v').innerHTML = PROVB3.map(([m, n, c]) => `<div class="card row" style="padding:20px 24px;gap:20px;border-left:5px solid ${c}"><div class="tile" style="color:${c};background:${c}22;border:1px solid ${c}88">${m}</div><div style="font:700 34px Geist">${n}</div><span style="margin-left:auto">${M.icon('check', 34, '#3fb950', 2.6)}</span></div>`).join('');
+const b3rows = [...$('b3v').children];
+[tB1, tB2, tB3].forEach((x) => { M.cue(x - 0.05, 'impact', { g: 0.45 }); M.cue(x + 0.1, 'swish', { g: 0.4 }); });
+M.cue(tB1Pick, 'click', { g: 0.55 }); M.cue(tB1Pick + 0.4, 'pop', { g: 0.5 }); M.cue(tB1No, 'stamp', { g: 0.6 });
+M.cue(tB2With, 'success', { g: 0.4 }); '/resume'.split('').forEach((_, i) => M.cue(tB2Res - 0.4 + i * 0.06, 'key', { g: 0.22 }));
+b3rows.forEach((_, i) => M.cue(tB3 + 0.4 + i * 0.25, 'pop', { g: 0.45, pan: 0.4 })); M.cue(tB3Free, 'bubble', { g: 0.5 }); M.cue(tB3Paid, 'bubble', { g: 0.5 });
+
+/* ---------- get it ---------- */
+$('logoG').innerHTML = BUN(116); $('srchGI').innerHTML = M.icon('search', 34, '#8b8f98', 2.2);
+const tGet = L('get1').start, tGetFree = w('get1', 'free'), tGetMkt = w('get1', 'marketplace');
+M.cue(tGet - 0.05, 'reveal', { g: 0.7 }); M.cue(tGetFree, 'chime', { g: 0.5 }); M.cue(tGetMkt, 'pop', { g: 0.5 });
+
+/* ---------- part 2 title ---------- */
+const TUT_CH = ['Install', 'Switch', 'Accounts', 'Shared chats', 'Keep going', 'AI providers', 'Models', 'Backups', 'Second opinion', 'Privacy'];
+$('tutChips').innerHTML = TUT_CH.map((n, i) => `<span class="chip" style="font-size:28px"><span class="mono" style="color:var(--peach)">${String(i + 1).padStart(2, '0')}</span>${n}</span>`).join('');
+const tutChips = [...$('tutChips').children];
+const tTut = L('tut0').start, tutT = M.split($('tutT'));
+M.cue(tTut - 0.05, 'impact', { g: 0.55 }); tutChips.forEach((_, i) => M.cue(w('tut0', 'step') + i * 0.06, 'tick', { g: 0.25, pan: -0.5 + i * 0.1 }));
 
 /* ---------- 3 install ---------- */
 const STEPS = ['Switch in one click', 'Add another Claude account', 'Connect other AI models', 'Hit a limit? Keep going', 'Optional extras'];
@@ -554,16 +618,17 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
     const push = 1 + 0.03 * M.eio((t - s.a) / Math.max(1, s.b - s.a));
     M.apply(s.el, v, `scale(${push.toFixed(4)})`);
   }
-  const on = (i) => t > SC[i].a - 0.1 && t < SC[i].b + 0.3;
+  const on = (id) => t > SCI[id].a - 0.1 && t < SCI[id].b + 0.3;
   $('glow').style.opacity = 0.6 + 0.4 * M.pulse(t, 6, 0, 1);
 
   // chapter chip + caption
   const c = chapAt(t);
-  $('chap').style.opacity = c < 0 ? 0 : M.clamp((t - SC[3].a - 0.2) / 0.3);
+  if (c >= 0) { const ts = SCI[CH[c][0]].a, o = Math.min(M.clamp((t - ts) / 0.15), M.clamp((ts + 1.3 - t) / 0.25)); $('dimT').style.opacity = 0.88 * o; $('bigT').style.opacity = o; $('bigT').style.transform = `scale(${0.92 + 0.08 * M.sp(t, ts, M.FAST)})`; M.setText($('bigN'), String(c + 1).padStart(2, '0') + ' / 10'); M.setText($('bigTT'), CH[c][1]); } else { $('dimT').style.opacity = 0; $('bigT').style.opacity = 0; }
+  $('chap').style.opacity = c < 0 ? 0 : M.clamp((t - SCI.s3.a - 0.2) / 0.3);
   if (c >= 0) { M.setText($('chapN'), String(c + 1).padStart(2, '0') + ' / 10'); M.setText($('chapT'), CH[c][1]); chapDots.forEach((d, i) => (d.style.background = i <= c ? '#FFC27A' : '#3a3d46')); }
   const ln = M.VO.lines.find((l) => t >= l.start - 0.15 && t <= l.end + 0.35);
   const cap = $('cap');
-  if (ln && t > SC[1].a) { M.setText(cap, CAP(ln.text)); const k = M.sp(t, ln.start - 0.15, M.FAST); cap.style.opacity = Math.min(M.clamp((t - ln.start + 0.15) / 0.15), M.clamp((ln.end + 0.35 - t) / 0.15)); cap.style.transform = `translateY(${(1 - k) * 14}px)`; }
+  if (ln && t > 0.4) { M.setText(cap, CAP(ln.text)); const k = M.sp(t, ln.start - 0.15, M.FAST); cap.style.opacity = Math.min(M.clamp((t - ln.start + 0.15) / 0.15), M.clamp((ln.end + 0.35 - t) / 0.15)); cap.style.transform = `translate(-50%, ${(1 - k) * 14}px)`; }
   else cap.style.opacity = 0;
 
   // cursor
@@ -572,19 +637,19 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
   else cur.style.opacity = 0;
 
   // 0 intro: storm -> icon + wordmark
-  if (on(0)) {
+  if (on('s0')) {
     // camera shake on every bolt and on the implosion
     let sx = 0, sy = 0;
     BOLT_T.forEach((b) => { const [a, c] = M.shake(t, b, 9, 0.35); sx += a; sy += c; });
     const [ia, ib] = M.shake(t, tForm, 26, 0.6); sx += ia; sy += ib;
     $('s0').style.translate = `${sx}px ${sy}px`;
     // clouds swirl inwards, then get blown away by the implosion
-    const pc = M.eio(t / tForm), blow = M.clamp((t - tForm) / 0.6);
+    const pc = M.eio((t - TS) / (tForm - TS)), blow = M.clamp((t - tForm) / 0.6);
     CLOUDS.forEach((c, i) => {
       const ang = c.a + pc * 1.9, r = M.lerp(c.r0, 160, pc) + M.eo(blow) * 1400;
       const x = CX + Math.cos(ang) * r - c.s / 2, y = CY + Math.sin(ang) * r * 0.7 - c.s * 0.31;
       const el = cloudEls[i]; el.style.transform = `translate(${x}px,${y}px) rotate(${ang * 40}deg) scale(${1 + blow})`;
-      el.style.opacity = M.clamp(t / 0.8) * (1 - blow);
+      el.style.opacity = M.clamp((t - TS) / 0.5) * (1 - blow);
     });
     // shards accelerate along a spiral into the eye
     SHARDS.forEach((s, i) => {
@@ -620,45 +685,68 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
     $('glow').style.opacity = t < tForm ? 0.4 + 0.6 * M.pulse(t, 0.9, 0, 1) : 1;
   }
 
-  // 1 questions: one big question at a time, with its picture
-  if (on(1)) {
-    const cur = qt.findIndex((q) => t >= q.a - 0.1 && t < q.b);
-    M.setText($('qn1'), cur >= 0 ? `QUESTION ${cur + 1} / 4` : '');
-    $('qn1').style.opacity = M.clamp((t - SC[1].a - 0.2) / 0.3);
-    qt.forEach((q, i) => {
-      const v = M.vis(t, q.a, q.b, { lin: 0.2, lout: 0.25, blur: 14 });
-      q.el.style.opacity = v.o; q.el.style.filter = `blur(${v.blur}px)`;
-      M.words(q.sp, t, q.times, { style: 'rise' });
-      const vv = M.vis(t, q.a + 0.15, q.b, { lin: 0.3, lout: 0.25, blur: 14 });
-      q.v.style.opacity = vv.o; q.v.style.filter = `blur(${vv.blur}px)`;
-      q.v.style.transform = `translateX(${(1 - M.sp(t, q.a + 0.15, M.MORPH)) * 120}px)`;
-    });
-    // q1: token meter drains to zero
-    const left = 100 - 100 * M.eio((t - tTok + 0.2) / 1.0);
-    $('meter1').style.width = left + '%'; M.setText($('meterN1'), Math.round(left) + '%');
-    $('meterN1').style.color = left < 15 ? '#ff8a80' : '#F3F1EC';
-    const lm = M.sp(t, tTask, M.POP); $('lim1').style.opacity = M.clamp((t - tTask) / 0.06); $('lim1').style.transform = `scale(${0.8 + 0.2 * lm})`;
-    // q2: the log out / log in loop spins
-    $('loopI2').style.transform = `rotate(${(t - qt[1].a) * 260}deg)`;
-    $('loop2').style.opacity = M.clamp((t - tAcc2) / 0.2);
-    // q3: chat bubbles crumble away
-    b3.forEach((e, i) => { const d = M.clamp((t - tCtx - i * 0.12) / 0.6); e.style.opacity = 1 - d; e.style.transform = `translateY(${d * 60}px) rotate(${d * (i % 2 ? 8 : -8)}deg)`; e.style.filter = `blur(${d * 10}px)`; });
-    const lc = M.sp(t, tCtx + 0.2, M.POP); $('lost3').style.opacity = M.clamp((t - tCtx - 0.2) / 0.08); $('lost3').style.transform = `scale(${0.6 + 0.4 * lc})`;
-    // q4: locked model tiles
-    $('lock4').style.opacity = M.clamp((t - tToo) / 0.15);
-    [...$('tiles4').children].forEach((e, i) => { e.style.opacity = 0.35 + 0.65 * M.clamp((t - qt[3].a - 0.2 - i * 0.1) / 0.2) * (t < tToo ? 1 : 0.55); });
+  // hook
+  if (on('hook')) {
+    const wH = $('wH'); appear(wH, t, 0.05, { dy: 50 });
+    codeH.forEach((e, i) => { e.style.transform = `scaleX(${M.eo((t - tTypeH - i * 0.22) / 0.25)})`; });
+    appear($('limH'), t, tLimH, { dy: 90, sp: M.POP, fade: 0.04 });
+    const [sx, sy] = M.shake(t, tLimH, 20, 0.5); const g = M.clamp(1 - Math.abs(t - tLimH - 0.08) / 0.25);
+    const fade = M.clamp((t - tNow + 0.15) / 0.4);
+    wH.style.translate = `${sx}px ${sy}px`;
+    wH.style.filter = `grayscale(${fade}) blur(${fade * 6}px) brightness(${1 - 0.45 * fade}) drop-shadow(${g * 12}px 0 0 rgba(255,0,80,.6)) drop-shadow(${-g * 12}px 0 0 rgba(0,200,255,.6))`;
+    M.words(nowT, t, [tNow, tNow + 0.2], { style: 'slam' });
+    const wv = M.sp(t, tWait - 0.1, M.POP); $('waitT').style.opacity = M.clamp((t - tWait + 0.1) / 0.1); $('waitT').style.transform = `scale(${0.7 + 0.3 * wv})`;
+    const ang = Math.max(0, t - tWait) * 900; $('clockHand').setAttribute('transform', `rotate(${ang} 12 12)`); $('clockHand2').setAttribute('transform', `rotate(${ang / 12} 12 12)`);
   }
 
-  // 2 the fix
-  if (on(2)) {
-    const k = M.sp(t, tFix - 0.1, [15, 0.7]);
-    $('fixT').style.opacity = M.clamp((t - tFix + 0.1) / 0.1); $('fixT').style.transform = `scale(${0.7 + 0.3 * k})`;
-    ['sol1', 'sol2', 'sol3'].forEach((id, i) => appear($(id), t, tSol[i] - 0.15, { dy: 80, s0: 0.85, sp: M.POP }));
-    $('sol3').style.boxShadow = t > tSol[2] + 0.2 ? `0 0 0 3px rgba(63,185,80,${0.6 * M.clamp(1 - (t - tSol[2] - 0.2) / 1.5)})` : 'none';
+  // what Hoppy is
+  if (on('what')) {
+    appear($('whatT'), t, tWhat - 0.15, { dy: 40, s0: 0.95 });
+    const sb = $('whatSb'); sb.style.background = t > tWhatClick - 0.2 ? 'rgba(255,255,255,.25)' : 'transparent';
+    const lv = M.vis(t, tWhatClick + 0.1, SCI.what.b, { lin: 0.2, lout: 0.2 }); const wl = $('whatList'); wl.style.opacity = lv.o; wl.style.transform = `translateY(${(1 - lv.o) * 20}px)`;
+    $('wl1').style.background = t < tWhatClick + 0.7 ? '#04395e' : 'transparent';
+    $('wl2').style.background = t >= tWhatClick + 0.7 && t < tWhatClick + 1.2 ? '#04395e' : 'transparent';
+    $('wl3').style.background = t >= tWhatClick + 1.2 ? '#04395e' : 'transparent';
+    M.setText($('whatSbT'), t > tWhatClick + 1.3 ? 'Other AI' : t > tWhatClick + 0.8 ? 'Claude · Personal' : 'Claude · Work');
+  }
+
+  // benefit 1
+  if (on('b1s')) {
+    appear($('b1v'), t, tB1 + 0.15, { dx: 120, dy: 0 });
+    $('b1r1').style.background = t < tB1Pick - 0.1 ? '#04395e' : 'transparent';
+    $('b1r2').style.background = t >= tB1Pick - 0.1 ? '#04395e' : 'transparent';
+    appear($('b1tab'), t, tB1Pick + 0.4, { dy: -10, s0: 0.9, sp: M.POP });
+    appear($('b1chip'), t, tB1No - 0.05, { dy: 0, s0: 1.6, rot: -8, sp: [20, 0.7], fade: 0.05 });
+  }
+  // benefit 2
+  if (on('b2s')) {
+    appear($('b2v'), t, tB2 + 0.15, { dx: 120, dy: 0 });
+    [...$('b2msgs').children].forEach((e, i) => appear(e, t, tB2 + 0.3 + i * 0.15, { dy: 20 }));
+    M.setText($('b2in'), (M.typed('/resume', t, tB2Res - 0.4, 16) || '') + (t < tB2Res + 0.6 ? M.caret(t) : ''));
+    appear($('b2chip'), t, tB2Res + 0.3, { dy: 20, s0: 0.85, sp: M.POP });
+  }
+  // benefit 3
+  if (on('b3s')) {
+    b3rows.forEach((e, i) => appear(e, t, tB3 + 0.4 + i * 0.25, { dx: 100, dy: 0, sp: M.POP }));
+    appear($('b3free'), t, tB3Free, { dy: 20, s0: 0.6, sp: M.POP }); appear($('b3paid'), t, tB3Paid, { dy: 20, s0: 0.6, sp: M.POP });
+  }
+
+  // get it
+  if (on('get')) {
+    const k = M.sp(t, tGet - 0.05, [13, 0.74]);
+    $('logoG').style.transform = `scale(${0.3 + 0.7 * k}) rotate(${(1 - k) * -30}deg)`; $('logoG').style.opacity = M.clamp((t - tGet + 0.05) / 0.1);
+    appear($('pillG'), t, tGetFree - 0.1, { dy: 30, s0: 0.85, sp: M.POP });
+    appear($('srchG'), t, tGetMkt - 0.1, { dy: 30, s0: 0.9 });
+  }
+
+  // part 2 title
+  if (on('tut')) {
+    M.words(tutT, t, tTut, { step: 0.08, style: 'rise' });
+    tutChips.forEach((e, i) => appear(e, t, w('tut0', 'step') + i * 0.06, { dy: 20, s0: 0.8, sp: M.POP }));
   }
 
   // 3 install
-  if (on(3)) {
+  if (on('s3')) {
     M.setText($('srchT3'), (M.typed(SQ3, t, tSearch, 22) || '') + (t > tSearch - 0.3 && t < tFound + 0.4 ? M.caret(t) : ''));
     $('srch3').style.boxShadow = t > tSearch - 0.3 ? '0 0 0 2px rgba(14,99,156,.9)' : 'none';
     appear($('ext3'), t, tFound, { dy: 24, s0: 0.92, sp: M.POP });
@@ -673,8 +761,8 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
   }
 
   // 4 switch
-  if (on(4)) {
-    appear($('w4'), t, SC[4].a, { dy: 50 });
+  if (on('s4')) {
+    appear($('w4'), t, SCI.s4.a, { dy: 50 });
     const sb = $('sbi4'); sb.style.background = t > tSb - 0.1 ? 'rgba(255,255,255,.25)' : 'transparent'; sb.style.boxShadow = t > tSb && t < tClick4 + 0.3 ? `0 0 0 ${3 + 3 * M.pulse(t, 0.8, 0, 1)}px rgba(255,194,122,.8)` : 'none';
     const qv = M.vis(t, tList - 0.15, tPick4 + 1.15, { lin: 0.2, lout: 0.18 }); const qp = $('qp4'); qp.style.opacity = qv.o; qp.style.transform = `scale(${0.96 + 0.04 * qv.o})`;
     M.stroke($('arr4'), t, tClick4 + 0.1, 0.5); $('arr4').style.opacity = M.clamp(1 - (t - tPick4 - 0.6) / 0.3);
@@ -685,7 +773,7 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
   }
 
   // 5 accounts
-  if (on(5)) {
+  if (on('s5')) {
     appear($('a5a'), t, L('ac1').start + 0.1, { dy: 40 });
     appear($('add5'), t, L('ac1').start + 0.3, { dy: 30 });
     $('add5').style.background = t > tAdd5 - 0.1 && t < tAdd5 + 0.4 ? 'rgba(55,148,255,.12)' : 'transparent';
@@ -701,8 +789,8 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
   }
 
   // 6 chats
-  if (on(6)) {
-    left6.forEach((e, i) => appear(e, t, SC[6].a + 0.2 + i * 0.12, { dy: 20 }));
+  if (on('s6')) {
+    left6.forEach((e, i) => appear(e, t, SCI.s6.a + 0.2 + i * 0.12, { dy: 20 }));
     const fl = [];
     MSG6.forEach(([k, s], i) => {
       const t0 = tTravel + i * 0.22, p = M.eio((t - t0) / 0.6);
@@ -710,15 +798,15 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
     });
     $('fly6').innerHTML = fl.join('');
     right6.slice(0, 3).forEach((e, i) => { e.style.opacity = t > tTravel + i * 0.22 + 0.6 ? M.clamp((t - tTravel - i * 0.22 - 0.6) / 0.1) : 0; });
-    const inTxt = M.typed('/resume', t, tRes - 0.35, 16); M.setText($('in6'), (inTxt || '') + (t > SC[6].a + 0.3 && t < tStop - 0.2 ? M.caret(t) : ''));
+    const inTxt = M.typed('/resume', t, tRes - 0.35, 16); M.setText($('in6'), (inTxt || '') + (t > SCI.s6.a + 0.3 && t < tStop - 0.2 ? M.caret(t) : ''));
     $('in6').style.opacity = t > tStop - 0.2 ? 0.4 : 1;
     const ct = $('cont6'); ct.style.opacity = M.clamp((t - tStop + 0.2) / 0.15); M.setText(ct, M.typed(CONT6, t, tStop, 28));
     appear(ct, t, tStop - 0.2, { dy: 20 });
   }
 
   // 7 continue
-  if (on(7)) {
-    appear($('w7a'), t, SC[7].a, { dy: 40 });
+  if (on('s7')) {
+    appear($('w7a'), t, SCI.s7.a, { dy: 40 });
     appear($('lim7'), t, tLim7, { dy: 40, sp: M.POP, fade: 0.05 });
     const pk = $('p7'); appear(pk, t, tCont7 - 0.15, { dy: 20 });
     $('p7a').style.background = t > tCont7 - 0.05 && t < tWhere7 - 0.7 ? '#04395e' : 'transparent';
@@ -728,8 +816,8 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
   }
 
   // 8 providers
-  if (on(8)) {
-    prov8.forEach((e, i) => { const k = appear(e, t, tProv[i] - 0.05, { dy: 0, s0: 0.92, sp: M.POP }); e.style.opacity = t < tSet8 ? M.clamp((t - SC[8].a - 0.3) / 0.3) * 0.4 : Math.max(0.4, M.clamp((t - tProv[i] + 0.05) / 0.14)); e.style.filter = t < tProv[i] - 0.05 ? 'grayscale(1)' : 'none'; });
+  if (on('s8')) {
+    prov8.forEach((e, i) => { const k = appear(e, t, tProv[i] - 0.05, { dy: 0, s0: 0.92, sp: M.POP }); e.style.opacity = t < tSet8 ? M.clamp((t - SCI.s8.a - 0.3) / 0.3) * 0.4 : Math.max(0.4, M.clamp((t - tProv[i] + 0.05) / 0.14)); e.style.filter = t < tProv[i] - 0.05 ? 'grayscale(1)' : 'none'; });
     appear($('free8'), t, tFree, { dy: -20, s0: 0.6, sp: M.POP }); appear($('paid8'), t, tPaid, { dy: -20, s0: 0.6, sp: M.POP });
     $('free8').className = 'chip ok'; $('paid8').className = 'chip info';
     appear($('key8'), t, tTest - 1.5, { dy: 40 });
@@ -741,7 +829,7 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
   }
 
   // 9 models
-  if (on(9)) {
+  if (on('s9')) {
     const freeOff = t > tFreeOff;
     $('knob9').style.left = (freeOff ? 4 : 32) - (freeOff ? 0 : 0) + 'px'; $('tog9').style.background = freeOff ? '#3a3d46' : '#0e639c';
     rows9.forEach((e, i) => { const paid = !MOD[i][4]; const t0 = paid ? tFreeOff + 0.1 + (i - 4) * 0.12 : tMo1 + 0.1 + i * 0.1; appear(e, t, t0, { dy: 24 });
@@ -753,7 +841,7 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
   }
 
   // 10 backups
-  if (on(10)) {
+  if (on('s10')) {
     chain10.forEach((e, i) => { appear(e, t, L('bk1').start + 0.1 + i * 0.12, { dx: 60, dy: 0 });
       const st = e.querySelector('.st'), node = e.querySelector('.node');
       if (i === 0) { const busy = t > tBusy; st.innerHTML = busy ? '<span class="chip bad" style="font-size:22px">busy</span>' : ''; node.style.borderColor = busy ? '#ff5f57' : '#3794ff'; node.style.color = busy ? '#ff5f57' : '#3794ff'; e.style.opacity = Math.min(e.style.opacity, busy ? 0.6 : 1); }
@@ -763,21 +851,21 @@ M.video({ W, H, T: END, bg: '#0d0e12', draw: (t) => {
   }
 
   // 11 second opinion
-  if (on(11)) {
+  if (on('s11')) {
     const q = $('q11'); q.style.opacity = M.clamp((t - tQ11) / 0.1); M.setText(q, M.typed(Q11, t, tQ11, 34) || ' ');
     appear($('a11'), t, tA11, { dy: 40 });
     ans11.forEach((e, i) => appear(e, t, tA11 + 0.3 + i * 0.25, { dx: -20, dy: 0 }));
   }
 
   // 12 trust
-  if (on(12)) {
-    appear($('shield12'), t, SC[12].a + 0.1, { dy: 0, s0: 0.6, sp: M.POP });
+  if (on('s12')) {
+    appear($('shield12'), t, SCI.s12.a + 0.1, { dy: 0, s0: 0.6, sp: M.POP });
     appear($('t12a'), t, L('sa1').start, { dx: 60, dy: 0 }); appear($('t12b'), t, L('sa2').start, { dx: 60, dy: 0 });
     $('t12aI').style.opacity = M.clamp((t - tLogin12) / 0.1); $('t12bI').style.opacity = M.clamp((t - tTwice) / 0.1);
   }
 
   // 13 CTA
-  if (on(13)) {
+  if (on('s13')) {
     const k = M.sp(t, tEnd, [13, 0.74]);
     $('logo13').style.transform = `scale(${0.3 + 0.7 * k}) rotate(${(1 - k) * -30}deg)`; $('logo13').style.opacity = M.clamp((t - tEnd) / 0.1);
     M.words(wm13, t, tEnd + 0.12, { step: 0.04, style: 'mask' });

@@ -1,0 +1,256 @@
+<title>Hoppy for Claude Code: complete guide</title>
+<style>
+  :root { --coral: #FF6B8B; --peach: #FFC27A; --ink: #F3F1EC; --muted: #9aa0aa; }
+  #stage { background: #0d0e12; font-family: Geist, sans-serif; }
+  #world { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+  .shot { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+  #hl { position: absolute; border: 3px solid var(--coral); border-radius: 8px; pointer-events: none; }
+  #cursor { position: absolute; left: 0; top: 0; width: 36px; height: 36px; z-index: 30; filter: drop-shadow(0 3px 6px rgba(0,0,0,.5)); }
+  #ring { position: absolute; width: 70px; height: 70px; margin: -35px 0 0 -35px; border-radius: 50%; border: 3px solid var(--coral); z-index: 29; }
+  #chip { position: absolute; left: 40px; top: 36px; z-index: 40; display: flex; align-items: center; gap: 14px; padding: 12px 22px 12px 14px; border-radius: 14px; background: rgba(13, 14, 18, .9); border: 1px solid rgba(255,255,255,.12); color: var(--ink); font: 600 26px Geist; }
+  #chipNum { background: linear-gradient(135deg, var(--peach), var(--coral)); color: #1b0f12; border-radius: 9px; padding: 4px 11px; font: 700 22px 'Geist Mono'; }
+  #cap { position: absolute; left: 50%; z-index: 40; max-width: 1500px; transform: translateX(-50%); padding: 16px 30px; border-radius: 16px; background: rgba(10, 11, 15, .92); border: 1px solid rgba(255,255,255,.1); color: var(--ink); font: 500 34px/1.3 Geist; text-align: center; white-space: normal; }
+  #dim { position: absolute; inset: 0; background: rgba(8, 9, 13, .86); z-index: 50; }
+  #big { position: absolute; inset: 0; z-index: 51; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: var(--ink); }
+  #bigNum { font: 700 34px 'Geist Mono'; color: var(--peach); letter-spacing: .18em; }
+  #bigT { font: 700 112px Geist; letter-spacing: -.02em; }
+  #title, #end { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; color: var(--ink); background: radial-gradient(ellipse at 50% 40%, #1d1420 0%, #0d0e12 70%); }
+  .logo { width: 170px; height: 170px; border-radius: 44px; background: linear-gradient(135deg, #FFC27A, #FF6B8B); display: flex; align-items: center; justify-content: center; box-shadow: 0 30px 90px -20px rgba(255,107,139,.6); }
+  .logo img { width: 150px; height: 150px; }
+  .h1 { font: 800 120px Geist; letter-spacing: -.03em; }
+  .sub { font: 500 44px Geist; color: var(--muted); }
+  .pill { font: 700 44px Geist; padding: 18px 44px; border-radius: 999px; border: 2px solid var(--peach); color: var(--peach); }
+  .search { display: flex; align-items: center; gap: 16px; padding: 16px 28px; border-radius: 14px; background: #121419; border: 1px solid #0e639c; font: 500 36px Geist; }
+  .toast { position: absolute; width: 452px; padding: 12px 14px; background: #252526; border: 1px solid #454545; border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.5); color: #ccc; font: 13px 'Segoe UI', Geist; }
+  .toast .btns { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+  .toast .b { padding: 3px 9px; border-radius: 2px; background: #3a3d41; color: #fff; }
+  .toast .b.p { background: #0e639c; }
+  .toast .src { color: #8b8b8b; margin-right: auto; align-self: center; font-size: 12px; }
+  #privacy { position: absolute; inset: 0; z-index: 55; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; background: rgba(8, 9, 13, .9); color: var(--ink); }
+  .prow { display: flex; align-items: center; gap: 22px; font: 600 50px Geist; }
+</style>
+
+<div class="fill" id="world">
+  <img class="shot" id="imgA">
+  <img class="shot" id="imgB">
+  <div class="toast" id="ovBack" style="left:1458px;top:972px"><div>ⓘ Claude · Work is available again.</div><div class="btns"><span class="src">Source: Hoppy for Claude Code</span><span class="b p">Switch to Work</span></div></div>
+  <div id="hl"></div>
+  <div id="ring"></div>
+  <div id="cursor"></div>
+</div>
+<div id="chip"><span id="chipNum">01</span><span id="chipT">Install</span></div>
+<div id="cap"></div>
+<div id="dim"></div>
+<div id="big"><div id="bigNum">CHAPTER 1</div><div id="bigT">Install</div></div>
+<div id="privacy">
+  <div class="prow" id="pv1r">🔒 Never touches your Claude login</div>
+  <div class="prow" id="pv2r">💳 Claude is never billed twice</div>
+  <div class="prow" id="pv3r">💻 Usage and limits read local files only</div>
+</div>
+<div id="title"><div class="logo"><img src="shots/logo.png"></div><div class="h1">Hoppy for Claude Code</div><div class="sub">The complete guide · real screens, step by step</div></div>
+<div id="end"><div class="logo"><img src="shots/logo.png"></div><div class="h1">Hoppy for Claude Code</div><div class="pill">Free on the VS Code Marketplace</div><div class="search">🔍 Hoppy for Claude Code</div></div>
+<div class="vignette"></div>
+
+<script>
+const W = 1920, H = 1080;
+const BOX = __BOXES__;
+const L = (id) => M.line(id);
+const $ = (id) => document.getElementById(id);
+
+const CH = [
+  ['in', 'Install'], ['sw', 'Switch accounts'], ['ac', 'Add an account'], ['st', 'Settings: Accounts'],
+  ['li', 'Real example: a limit hits'], ['co', 'Find the same chat'], ['pr', 'Connect AI providers'], ['mo', 'Models'],
+  ['bk', 'Backups'], ['oa', 'Other AI'], ['ex', 'Handy extras'], ['xp', 'Export to another computer'],
+];
+const chapterOf = (id) => CH.findIndex(([p]) => id.replace(/\d+$/, '') === p);
+
+// Beats: [line, word that starts it (or null = line start), shot, focus key, click key]
+// Focus/click keys refer to positions recorded from the real UI during capture (boxes.json).
+const S = [
+  ['i1', null, 'X1-search', null, null],
+  ['in1', null, 'X1-search', 'search', null],
+  ['in2', null, 'X1-search', 'focus', 'click'],
+  ['in3', null, 'X2-trust', 'focus', 'click'],
+  ['in4', null, 'X3-installed', 'focus', null],
+  ['in4', 'status', 'X3-installed', 'status', null],
+  ['sw1', null, 'B1-statusbar', 'focus', 'click'],
+  ['sw1', 'menu', 'B2-menu', 'focus', null],
+  ['sw2', null, 'B2-menu', 'usage', null],
+  ['sw3', null, 'B2-menu', 'personal', 'click'],
+  ['sw3', 'tab', 'B3-switched', 'focus', null],
+  ['ac1', null, 'B4-menu-add', 'focus', 'click'],
+  ['ac2', null, 'B5-add-name', 'focus', null],
+  ['ac3', null, 'B6-add-login', 'focus', null],
+  ['ac3', 'Each', 'B6-add-login', 'status', null],
+  ['st1', null, 'B7-settings', 'work', null],
+  ['st1', 'Accounts', 'B7-settings', 'usage', null],
+  ['st2', null, 'B7-settings', 'route', 'click'],
+  ['st3', null, 'B8-edit', 'focus', 'click'],
+  ['st3', 'pick', 'B8-edit', 'swatch', 'swatch'],
+  ['st3', 'color', 'B9-color', 'status', null],
+  ['li1', null, 'D2-task', 'focus', null],
+  ['li1', 'Open', 'D1-history', 'focus', 'click'],
+  ['li2', null, 'D3-ask', 'focus', null],
+  ['li2', 'hits', 'D4-popup', 'banner', null],
+  ['li3', null, 'D4-popup', 'focus', null],
+  ['li4', null, 'D4-popup', 'focus', 'click'],
+  ['li5', null, 'D5-on-other', 'status', null],
+  ['li6', null, 'D7-ask-other', 'focus', null],
+  ['li6', 'does', 'D8-other-08', null, null],
+  ['li6', 'adds', 'D9-other-done', 'focus', null],
+  ['li7', null, 'D4-popup', 'status', null],
+  ['co1', null, 'D10-history', 'focus', 'click'],
+  ['co2', null, 'D11-personal-chat', 'focus', null],
+  ['co3', null, 'C4-menu-continue', 'focus', null],
+  ['co3', 'Continue', 'C5-pick-chat', 'focus', null],
+  ['pr1', null, 'E1-providers', 'click', 'click'],
+  ['pr2', null, 'E1-providers', 'connected', null],
+  ['pr2', 'More', 'E1-providers', 'add', null],
+  ['pr3', null, 'E2-connect', 'focus', 'click'],
+  ['pr3', 'Get', 'E2-connect', 'steps', null],
+  ['pr3', 'Test', 'E2-connect', 'save', 'save'],
+  ['pr4', null, 'E2-connect', 'focus', null],
+  ['mo1', null, 'E3-models', 'main', 'click'],
+  ['mo1', 'helper', 'E3-models', 'helper', null],
+  ['mo2', null, 'E3-models', 'list', null],
+  ['mo2', 'Save', 'E3-models', 'save', 'save'],
+  ['bk1', null, 'E4-backups', 'chain', 'click'],
+  ['bk2', null, 'E4-backups', 'check', 'check'],
+  ['bk3', null, 'E5-checked', 'focus', null],
+  ['bk3', 'Put', 'E6-working-first', 'focus', 'click'],
+  ['oa1', null, 'E7-menu-other', 'focus', null],
+  ['oa2', null, 'E8-model-list', 'focus', null],
+  ['ex1', null, 'E9-before-flip', 'status', null],
+  ['ex1', 'flips', 'E10-flip', 'toast', null],
+  ['ex2', null, 'E11-pin', 'focus', null],
+  ['ex2', 'pins', 'E12-pinned', 'focus', null],
+  ['ex3', null, 'E13-more', 'export', null],
+  ['ex3', 'second', 'E13-more', 'skill', null],
+  ['xp1', null, 'E14-exported', 'focus', null],
+  ['xp2', null, 'E15-file', 'focus', null],
+  ['xp3', null, 'F1-before', 'focus', null],
+  ['xp3', 'Import', 'F2-imported', 'focus', null],
+  ['xp4', null, 'F3-after', 'focus', null],
+  ['pv1', null, 'E15-file', null, null],
+  ['out1', null, 'X1-search', null, null],
+];
+
+function startOf(line, word) {
+  if (!word) return L(line).start - 0.2;
+  try { return M.word(line, word) - 0.15; } catch (e) { return L(line).start - 0.2; }
+}
+const beats = S.map(([line, word, img, fk, ck]) => {
+  const bx = BOX[img] || {};
+  return { id: line, img, t0: startOf(line, word), focus: fk ? bx[fk] : null, click: ck ? bx[ck] : null };
+});
+beats.forEach((b, i) => (b.t1 = i + 1 < beats.length ? beats[i + 1].t0 : M.VO.duration + 3));
+const T = M.VO.duration + 3.2;
+
+// camera: frame the focus box (with context), 1x..1.8x
+const cam = beats.map((b) => {
+  if (!b.focus) return { x: W / 2, y: H / 2, s: 1 };
+  const [x1, y1, x2, y2] = b.focus;
+  const w = Math.max(x2 - x1, 520), h = Math.max(y2 - y1, 300);
+  const s = M.clamp(Math.min((W * 0.62) / w, (H * 0.6) / h), 1, 1.8);
+  const hw = W / 2 / s, hh = H / 2 / s;
+  return { x: M.clamp((x1 + x2) / 2, hw, W - hw), y: M.clamp((y1 + y2) / 2, hh, H - hh), s };
+});
+const camX = M.track(W / 2, beats.map((b, i) => [b.t0 + 0.3, cam[i].x, M.CAM]));
+const camY = M.track(H / 2, beats.map((b, i) => [b.t0 + 0.3, cam[i].y, M.CAM]));
+const camS = M.track(1, beats.map((b, i) => [b.t0 + 0.3, cam[i].s, M.CAM]));
+
+// cursor: to the centre of each click box, press shortly after the beat starts
+const centre = (b) => [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2];
+const clicks = beats.filter((b) => b.click).map((b) => {
+  const [x, y] = centre(b.click);
+  return { t: Math.min(b.t0 + 1.0, b.t1 - 0.35), x, y };
+});
+const pathPts = [[0, 1400, 900]];
+clicks.forEach((c) => { pathPts.push([c.t - 0.7, c.x, c.y]); pathPts.push([c.t + 0.45, c.x, c.y]); });
+const cursorPath = M.path(pathPts);
+const presses = M.presses(clicks.map((c) => c.t), []);
+clicks.forEach((c) => M.cue(c.t, 'click', { g: 0.55 }));
+
+const chapterStarts = CH.map(([p], i) => ({ i, t: L(`${p}1`).start - 1.0, title: CH[i][1] }));
+chapterStarts.forEach((c) => { M.cue(c.t, 'whoosh', { g: 0.35 }); M.cue(c.t + 0.15, 'tick', { g: 0.3 }); });
+M.cue(M.word('li2', 'hits'), 'error', { g: 0.4 });
+M.cue(L('li3').start, 'pop', { g: 0.5 });
+M.cue(L('li5').start, 'success', { g: 0.4 });
+M.cue(M.word('li6', 'adds'), 'success', { g: 0.35 });
+M.cue(L('xp3').start + 1.2, 'pop', { g: 0.4 });
+M.cue(L('out2').start, 'chime', { g: 0.45 });
+M.cue(0.15, 'reveal', { g: 0.45 });
+
+$('cursor').innerHTML = M.CURSOR;
+const capEl = $('cap'), imgA = $('imgA'), imgB = $('imgB');
+const cur = { A: '', B: '' };
+const setImg = (el, k, name) => { if (cur[k] !== name) { el.src = `shots/${name}.jpg`; cur[k] = name; } };
+
+M.video({
+  W, H, T, bg: '#0d0e12',
+  draw(t) {
+    let k = beats.findIndex((b) => t >= b.t0 && t < b.t1);
+    if (k < 0) k = t < beats[0].t0 ? 0 : beats.length - 1;
+    const b = beats[k], prev = beats[k - 1];
+    const fade = prev && prev.img !== b.img ? M.clamp((t - b.t0) / 0.3) : 1;
+    setImg(imgA, 'A', fade < 1 ? prev.img : b.img);
+    setImg(imgB, 'B', b.img);
+    imgB.style.opacity = fade < 1 ? fade : 0;
+
+    const s = camS(t), cx = camX(t), cy = camY(t);
+    $('world').style.transform = `translate(${W / 2 - cx * s}px, ${H / 2 - cy * s}px) scale(${s})`;
+
+    // highlight exactly the recorded control
+    const hl = $('hl');
+    if (b.focus && !['i1', 'pv1', 'out1'].includes(b.id)) {
+      const a = M.sp(t, b.t0 + 0.4, M.FAST);
+      const [x1, y1, x2, y2] = b.focus;
+      Object.assign(hl.style, { left: x1 + 'px', top: y1 + 'px', width: x2 - x1 + 'px', height: y2 - y1 + 'px', opacity: Math.min(a, M.clamp((b.t1 - t) / 0.2)) });
+      hl.style.boxShadow = `0 0 0 4000px rgba(5,6,10,${0.34 * a}), 0 0 22px rgba(255,107,139,.55)`;
+    } else hl.style.opacity = 0;
+
+    const p = cursorPath(t);
+    const near = clicks.some((c) => t > c.t - 1.1 && t < c.t + 1.3);
+    $('cursor').style.opacity = near ? 1 : 0;
+    $('cursor').style.transform = `translate(${p.x - 6}px, ${p.y - 4}px) scale(${(1 - 0.18 * presses(t)) * 1.15 / s})`;
+    $('cursor').style.transformOrigin = '6px 4px';
+    const c = clicks.find((c) => t > c.t && t < c.t + 0.6);
+    const ring = $('ring');
+    if (c) { const u = (t - c.t) / 0.6; Object.assign(ring.style, { left: c.x + 'px', top: c.y + 'px', opacity: 1 - u, transform: `scale(${(0.4 + u) / s})` }); }
+    else ring.style.opacity = 0;
+
+    // rebuilt notice (the reset is a day away): shown only while the line says it
+    $('ovBack').style.opacity = b.id === 'li7' && t > M.word('li7', 'back') - 0.2 ? 1 : 0;
+
+    const ci = chapterOf(b.id);
+    $('chip').style.opacity = ci >= 0 ? 1 : 0;
+    if (ci >= 0) { M.setText($('chipNum'), String(ci + 1).padStart(2, '0') + '/' + CH.length); M.setText($('chipT'), CH[ci][1]); }
+    const cs = chapterStarts.find((c) => t >= c.t && t < c.t + 1.6);
+    const big = cs ? Math.min(M.clamp((t - cs.t) / 0.22), M.clamp((cs.t + 1.6 - t) / 0.3)) : 0;
+    $('dim').style.opacity = big;
+    $('big').style.opacity = big;
+    if (cs) { M.setText($('bigNum'), `CHAPTER ${cs.i + 1}`); M.setText($('bigT'), cs.title); $('bigT').style.transform = `translateY(${(1 - M.sp(t, cs.t, M.FAST)) * 30}px)`; }
+
+    const line = M.VO.lines.find((l) => t >= l.start - 0.1 && t < l.end + 0.4);
+    capEl.style.opacity = line && !['out1', 'out2', 'pv1', 'pv2'].includes(line.id) ? 1 : 0;
+    if (line) M.setText(capEl, line.text.replace('slash model', '/model').replace('Control Alt H', 'Ctrl+Alt+H').replace('App dot T S X', 'App.tsx'));
+    // keep the caption away from the highlighted control (in screen space)
+    let low = false;
+    if (b.focus) { const cyScreen = H / 2 + (((b.focus[1] + b.focus[3]) / 2) - cy) * s; low = cyScreen > 560; }
+    capEl.style.top = low ? '118px' : 'auto';
+    capEl.style.bottom = low ? 'auto' : '52px';
+
+    const tIn = M.clamp(1 - (t - (L('in1').start - 1.4)) / 0.5);
+    $('title').style.opacity = tIn;
+    const pvOn = t >= L('pv1').start - 0.3 && t < L('out1').start - 0.2;
+    $('privacy').style.opacity = pvOn ? Math.min(M.clamp((t - L('pv1').start + 0.3) / 0.4), M.clamp((L('out1').start - 0.2 - t) / 0.4)) : 0;
+    ['pv1r', 'pv2r', 'pv3r'].forEach((id, i) => {
+      const at = [L('pv1').start, M.word('pv1', 'billed'), L('pv2').start][i];
+      const a = M.sp(t, at, M.FAST);
+      $(id).style.opacity = a;
+      $(id).style.transform = `translateY(${(1 - a) * 24}px)`;
+    });
+    $('end').style.opacity = M.clamp((t - (L('out1').start - 0.2)) / 0.5);
+  },
+});
+</script>

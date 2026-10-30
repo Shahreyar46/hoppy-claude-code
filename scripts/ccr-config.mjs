@@ -37,6 +37,23 @@ const PROVIDER_TEMPLATES = {
     api_base_url: 'https://api.z.ai/api/paas/v4/chat/completions',
     models: ['glm-5.3'],
   },
+  // OpenAI-compatible; the extension fills the model list from each provider's live /models.
+  groq: {
+    api_base_url: 'https://api.groq.com/openai/v1/chat/completions',
+    models: [],
+  },
+  cerebras: {
+    api_base_url: 'https://api.cerebras.ai/v1/chat/completions',
+    models: [],
+  },
+  mistral: {
+    api_base_url: 'https://api.mistral.ai/v1/chat/completions',
+    models: [],
+  },
+  nvidia: {
+    api_base_url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+    models: [],
+  },
 };
 
 // Providers that would bill Claude per token. Never kept in the router.

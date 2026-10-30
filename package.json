@@ -2,7 +2,7 @@
   "name": "hoppy-claude-code",
   "displayName": "Hoppy for Claude Code",
   "description": "Out of tokens? Hoppy hops. Switch between your Claude accounts and other AI models (free or paid: OpenRouter, Gemini, DeepSeek, GLM) in Claude Code, keep your chat context, and continue any chat on another account or model. Not affiliated with Anthropic.",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "publisher": "shahreyar",
   "license": "MIT",
   "engines": {
@@ -73,6 +73,32 @@
       {
         "command": "hoppy.status",
         "title": "Hoppy: Show Status"
+      },
+      {
+        "command": "hoppy.flip",
+        "title": "Hoppy: Switch Back to Previous Account or Model"
+      },
+      {
+        "command": "hoppy.pinProject",
+        "title": "Hoppy: Always Use the Current Account in This Project"
+      },
+      {
+        "command": "hoppy.unpinProject",
+        "title": "Hoppy: Stop Using a Fixed Account in This Project"
+      },
+      {
+        "command": "hoppy.exportSettings",
+        "title": "Hoppy: Export Settings (no keys)"
+      },
+      {
+        "command": "hoppy.importSettings",
+        "title": "Hoppy: Import Settings"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "hoppy.flip",
+        "key": "ctrl+alt+h"
       }
     ],
     "configuration": {
@@ -87,6 +113,45 @@
           "type": "boolean",
           "default": true,
           "description": "When switching, copy this project's chats from your other accounts and Other AI so /resume shows all of them. Originals are never changed."
+        },
+        "hoppy.accountColors": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Status bar color per Claude account folder, e.g. {\"C:\\Users\\me\\.claude\": \"#FF6B8B\"}. Set it from Hoppy Settings → Accounts."
+        },
+        "hoppy.showUsage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show tokens used per account (last 5 hours, today, this week) in the Hoppy menu and settings. Counted from Claude Code's local chat files; Anthropic's exact plan limits are not public, so this is a guide, not a percentage."
+        },
+        "hoppy.projectAccounts": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": { "type": "string" },
+          "description": "Projects pinned to a Claude account or Other AI: project folder to account folder. Set it from the Hoppy menu with Always use ... in this project."
+        },
+        "hoppy.onLimit": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "nextAccount",
+            "otherAi"
+          ],
+          "enumDescriptions": [
+            "Ask where to continue",
+            "Continue on the next Claude account that is not at its limit (Other AI if none)",
+            "Continue on Other AI"
+          ],
+          "default": "ask",
+          "description": "What Hoppy does when a Claude account hits its limit. Hoppy offers to set this after your first hop."
+        },
+        "hoppy.suggestOnLimit": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a Claude account hits its session or weekly limit, offer to continue the chat on another account or Other AI. Hoppy reads only Claude Code's local chat files; nothing is sent anywhere."
         },
         "hoppy.accountLabels": {
           "type": "object",
@@ -169,7 +234,7 @@
           {
             "id": "providers",
             "title": "Connect other AI models",
-            "description": "Add an API key, free or paid: OpenRouter, Gemini, DeepSeek or GLM. Get a key, paste it, click **Test & save**. Tip: one free OpenRouter key unlocks 15+ free models.\n[Add an API key](command:hoppy.settings?%5B%22providers%22%5D)",
+            "description": "Click **Connect** on a service, paste its key, and Hoppy checks it before saving. Free choices: OpenRouter (15+ free models), Gemini, Groq, Cerebras, Mistral, NVIDIA. Paid: DeepSeek, GLM.\n[Connect a service](command:hoppy.settings?%5B%22providers%22%5D)",
             "media": {
               "svg": "media/walkthrough/providers.svg",
               "altText": "OpenRouter card: 1 get a key, 2 paste it in the box, 3 click Test and save. A green check confirms the key works."
@@ -180,11 +245,11 @@
           },
           {
             "id": "continue",
-            "title": "Hit a limit? Keep going",
-            "description": "Move a chat to another account or to Other AI. Then type **/resume** in the new Claude tab and pick it. Everything comes with it.\n[Continue a chat](command:hoppy.handoff)",
+            "title": "Hit a limit? Hoppy keeps you going",
+            "description": "When a Claude account hits its limit, Hoppy asks where to continue. One click and the same chat opens on your other account or Other AI. When the limit resets, Hoppy tells you.\nYou can also move any chat yourself:\n[Continue a chat](command:hoppy.handoff)",
             "media": {
               "svg": "media/walkthrough/continue.svg",
-              "altText": "A chat on Claude Work hit its usage limit. Step 1: continue the chat. Step 2: type /resume in the new Other AI tab. Step 3: pick the chat."
+              "altText": "Step 1: Claude says the account hit its session limit. Step 2: Hoppy asks, with buttons Continue on Personal, Continue on Other AI, and Choose. Step 3: the same chat opens in a new tab; send a message and carry on."
             },
             "completionEvents": [
               "onCommand:hoppy.handoff",
@@ -194,7 +259,7 @@
           {
             "id": "extras",
             "title": "Optional extras",
-            "description": "Choose exactly which models appear (free or paid, e.g. DeepSeek, MiMo), set backups, and let Claude ask another AI for you.\n[Choose models](command:hoppy.settings?%5B%22models%22%5D)\n[Install /second-opinion](command:hoppy.installSkill)",
+            "description": "**Ctrl+Alt+H** switches back to the last account or model. Pin a project to one account from the Hoppy menu. In **Settings → Backups**, click **Check models** to see which work right now.\n[Check backups](command:hoppy.settings?%5B%22fallback%22%5D)\n[Install /second-opinion](command:hoppy.installSkill)",
             "media": {
               "svg": "media/walkthrough/extras.svg",
               "altText": "Left: backup models tried top to bottom. Right: asking nemotron for a second opinion from inside a Claude chat."

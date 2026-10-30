@@ -25,7 +25,7 @@ suite('Hoppy', () => {
     test('activates and registers every command', async () => {
         assert.ok(ext().isActive, 'extension active');
         const all = await vscode.commands.getCommands(true);
-        for (const id of ['menu', 'more', 'settings', 'guide', 'switch', 'switchToDir', 'useClaude', 'useOtherAi', 'handoff', 'addAccount', 'renameAccount', 'setup', 'syncFreeModels', 'gatewayRestart', 'installSkill', 'status']) {
+        for (const id of ['menu', 'more', 'settings', 'guide', 'switch', 'switchToDir', 'useClaude', 'useOtherAi', 'handoff', 'addAccount', 'renameAccount', 'setup', 'syncFreeModels', 'gatewayRestart', 'installSkill', 'status', 'flip']) {
             assert.ok(all.includes(`hoppy.${id}`), `missing command hoppy.${id}`);
         }
     });
@@ -111,7 +111,7 @@ suite('Hoppy', () => {
         const state = sent.find((m) => m.type === 'state');
         assert.ok(state, 'state sent to page');
         console.log(`    page state: ${state.targets.length} targets, ${state.providers.filter((p) => p.enabled).length} providers on, ${state.catalog.length} models in catalog, fallback ${state.fallback.length}`);
-        assert.strictEqual(state.providers.length, 4, 'four providers shown');
+        assert.strictEqual(state.providers.length, 8, 'eight providers shown');
         assert.ok(state.catalog.length > 10, 'catalog loaded');
         assert.ok(state.catalog.every((m) => !m.selector.startsWith('openrouter/') || m.selector.split('/').length >= 3), 'selectors well formed');
         assert.ok(!JSON.stringify(state).match(/sk-or-v1-[A-Za-z0-9]{20}|AIza[A-Za-z0-9_-]{20}/), 'no full API key reaches the page');
@@ -198,6 +198,258 @@ suite('Hoppy', () => {
         panel.post = (m) => sent.push(m);
         await panel.sendState();
         assert.strictEqual(sent.find((m) => m.type === 'state').initialTab, 'models');
+    });
+
+    // ---- 1.1: limit radar ----
+    const limitParse = require(path.join(out, 'limitParse.js'));
+    const limits = require(path.join(out, 'limits.js'));
+    const limitEntry = (text, timestamp, extra = {}) =>
+        JSON.stringify({ type: 'assistant', isApiErrorMessage: true, uuid: 'err-1', parentUuid: 'a-1', timestamp, message: { model: '<synthetic>', content: [{ type: 'text', text }] }, ...extra });
+    const dhaka = (t) => new Date(t).toLocaleString('en-GB', { timeZone: 'Asia/Dhaka' });
+
+    test('limit notices: kind and reset time for every wording Claude Code writes', () => {
+        const hit = Date.parse('2026-10-21T16:26:21Z'); // 22:26 in Dhaka
+        const cases = [
+            ["You've hit your session limit · resets 12:50am (Asia/Dhaka)", 'session', '22/10/2026, 00:50:00'],
+            ["You've hit your session limit · resets 11pm (Asia/Dhaka)", 'session', '21/10/2026, 23:00:00'],
+            ["You've hit your weekly limit · resets Oct 31, 6am (Asia/Dhaka)", 'weekly', '31/10/2026, 06:00:00'],
+            ["You've hit your weekly limit · resets 1pm (Asia/Dhaka)", 'weekly', '22/10/2026, 13:00:00'],
+        ];
+        for (const [text, kind, when] of cases) {
+            assert.strictEqual(limitParse.limitKind(text), kind, text);
+            assert.strictEqual(dhaka(limitParse.parseResetTime(text, hit)), when, text);
+        }
+        assert.strictEqual(limitParse.parseResetTime('Claude AI usage limit reached|1761300000', hit), 1761300000000);
+        assert.strictEqual(limitParse.parseResetTime("You've hit your Opus limit", hit), undefined, 'unknown wording gives no time, no crash');
+    });
+
+    test('limit notices: only Claude Code synthetic entries count, not chat text', () => {
+        const text = "You've hit your session limit · resets 6pm (Asia/Dhaka)";
+        assert.ok(limitParse.parseLimitLine(limitEntry(text, '2026-10-21T10:00:00Z')));
+        const modelSaidIt = JSON.stringify({ type: 'assistant', message: { model: 'claude-x', content: [{ type: 'text', text }] } });
+        assert.strictEqual(limitParse.parseLimitLine(modelSaidIt), undefined);
+        assert.strictEqual(limitParse.parseLimitLine('{not json limit'), undefined);
+        const chunk = ['{"type":"user"}', limitEntry(text, '2026-10-21T10:00:00Z'), '{"type":"user","message":{"content":"hi"}}'].join('\n');
+        assert.strictEqual(limitParse.lastLimitIn(chunk).kind, 'session');
+    });
+
+    test('a carried chat drops the limit notice and stays linked', () => {
+        const lines = [
+            JSON.stringify({ type: 'user', uuid: 'u-1', parentUuid: null, message: { content: 'fix it' } }),
+            JSON.stringify({ type: 'assistant', uuid: 'a-1', parentUuid: 'u-1', message: { content: [{ type: 'text', text: 'ok' }] } }),
+            limitEntry("You've hit your session limit · resets 6pm (Asia/Dhaka)", '2026-10-21T10:00:00Z', { uuid: 'err-1', parentUuid: 'a-1' }),
+            JSON.stringify({ type: 'user', uuid: 'u-2', parentUuid: 'err-1', message: { content: 'continue' } }),
+        ].join('\n');
+        const cleaned = chats.cleanChat(lines, { thinking: false }).split('\n').map((l) => JSON.parse(l));
+        assert.strictEqual(cleaned.length, 3);
+        assert.ok(!cleaned.some((e) => e.isApiErrorMessage));
+        assert.strictEqual(cleaned[2].parentUuid, 'a-1', 'next message re-linked past the removed notice');
+    });
+
+    test('subagent notices map to their main chat file', () => {
+        const f = path.join('C:', 'x', 'projects', 'p', 'sess-1', 'subagents', 'agent-a.jsonl');
+        assert.strictEqual(limits.mainSessionFile(f), path.join('C:', 'x', 'projects', 'p', 'sess-1.jsonl'));
+        const main = path.join('C:', 'x', 'projects', 'p', 'sess-1.jsonl');
+        assert.strictEqual(limits.mainSessionFile(main), main);
+    });
+
+    test('radar: a fresh limit notice fires once and marks the account', async function () {
+        this.timeout(15000);
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hoppy-radar-'));
+        const proj = path.join(dir, 'projects', 'c--demo');
+        fs.mkdirSync(proj, { recursive: true });
+        const file = path.join(proj, 'sess-1.jsonl');
+        fs.writeFileSync(file, JSON.stringify({ type: 'user', uuid: 'u-1', message: { content: 'hi' } }) + '\n');
+        const store = new Map();
+        const memento = { get: (k) => store.get(k), update: async (k, v) => void store.set(k, v), keys: () => [...store.keys()] };
+        const radar = new limits.LimitRadar(memento);
+        const hits = [];
+        radar.onHit((h) => hits.push(h));
+        radar.start([dir]);
+        try {
+            await new Promise((r) => setTimeout(r, 300));
+            const reset = new Date(Date.now() + 2 * 3600000);
+            const h12 = reset.getHours() % 12 || 12;
+            const text = `You've hit your session limit · resets ${h12}:${String(reset.getMinutes()).padStart(2, '0')}${reset.getHours() < 12 ? 'am' : 'pm'}`;
+            fs.appendFileSync(file, limitEntry(text, new Date().toISOString()) + '\n');
+            fs.appendFileSync(file, limitEntry(text, new Date().toISOString(), { uuid: 'err-2' }) + '\n');
+            for (let i = 0; i < 40 && !hits.length; i++) {
+                await new Promise((r) => setTimeout(r, 100));
+            }
+            await new Promise((r) => setTimeout(r, 800));
+            assert.strictEqual(hits.length, 1, 'one notification for one limit window');
+            assert.strictEqual(hits[0].sessionFile, file);
+            assert.ok(radar.limitFor(dir), 'account marked as limited');
+            assert.ok(Math.abs(hits[0].resetsAt - reset.getTime()) < 61000, 'reset time read in local time');
+            await radar.clear(dir);
+            assert.strictEqual(radar.limitFor(dir), undefined);
+        } finally {
+            radar.dispose();
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test('usage: counts each reply once, skips notices, copied history and non-Claude models', () => {
+        const usage = require(path.join(out, 'usage.js'));
+        usage.initUsage(fs.mkdtempSync(path.join(os.tmpdir(), 'hoppy-usage-store-')));
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hoppy-usage-'));
+        const proj = path.join(dir, 'projects', 'c--demo');
+        fs.mkdirSync(proj, { recursive: true });
+        const now = Date.now();
+        const reply = (id, model, ts, tokens) =>
+            JSON.stringify({ type: 'assistant', timestamp: new Date(ts).toISOString(), message: { id, model, usage: { input_tokens: tokens, cache_creation_input_tokens: 0, cache_read_input_tokens: 999999, output_tokens: 0 } } });
+        fs.writeFileSync(
+            path.join(proj, 's1.jsonl'),
+            [
+                reply('m1', 'claude-opus-5-5', now - 60000, 100),
+                reply('m1', 'claude-opus-5-5', now - 59000, 100), // same reply, second content block
+                reply('m2', 'claude-sonnet-5-5', now - 30000, 50),
+                reply('m3', '<synthetic>', now - 20000, 0),
+                reply('m4', 'openrouter/x/y:free', now - 10000, 70), // old Other AI chat in a Claude folder
+                reply('m0', 'claude-opus-5-5', now - 3 * 3600000, 500), // older than this file: copied history
+            ].join('\n') + '\n',
+        );
+        usage.noteImported(dir, reply('m2', 'claude-sonnet-5-5', now - 30000, 50), '');
+        const u = usage.scanUsage(dir, { claudeOnly: true });
+        assert.strictEqual(u.last5h.replies, 1, 'm1 only: m2 imported, m0 predates the file, m3 notice, m4 not Claude');
+        assert.strictEqual(u.last5h.tokens, 100, 'cache reads are not counted');
+        const all = usage.scanUsage(dir, { claudeOnly: false });
+        assert.strictEqual(all.last5h.replies, 2, 'Other AI folder counts every model');
+        assert.strictEqual(usage.formatTokens(3456789), '3.5M');
+        assert.strictEqual(usage.modelLabel('claude-opus-5-5'), 'Opus 5.5');
+        fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    test('health: HTTP answers map to plain statuses, working models sort first', () => {
+        const health = require(path.join(out, 'health.js'));
+        assert.strictEqual(health.statusFromHttp(401, ''), 'key');
+        assert.strictEqual(health.statusFromHttp(402, ''), 'credit');
+        assert.strictEqual(health.statusFromHttp(429, 'rate limited'), 'busy');
+        assert.strictEqual(health.statusFromHttp(404, ''), 'missing');
+        assert.strictEqual(health.statusFromHttp(400, 'No endpoints found for x'), 'missing');
+        assert.strictEqual(health.statusFromHttp(400, 'x is not a valid model ID'), 'missing');
+        assert.strictEqual(health.statusFromHttp(410, 'end of life'), 'missing');
+        assert.strictEqual(health.statusFromHttp(429, 'Rate limit exceeded: free-models-per-day'), 'quota');
+        const r = (selector, status) => ({ selector, status, ms: 1, checkedAt: 0 });
+        assert.deepStrictEqual(health.workingFirst(['a', 'b', 'c', 'd'], [r('a', 'busy'), r('b', 'ok'), r('c', 'no-tools')]), ['b', 'd', 'c', 'a']);
+        assert.deepStrictEqual(health.splitSelector('openrouter/x/y:free'), { provider: 'openrouter', model: 'x/y:free' });
+    });
+
+    test('new providers: key formats and default model picks', () => {
+        const setup = require(path.join(out, 'setup.js'));
+        const p = (id) => setup.PROVIDERS.find((x) => x.id === id);
+        assert.strictEqual(p('groq').looksValid('gsk_abc'), undefined);
+        assert.ok(p('groq').looksValid('sk-abc'));
+        assert.strictEqual(p('cerebras').looksValid('csk-abc'), undefined);
+        assert.strictEqual(p('nvidia').looksValid('nvapi-abc'), undefined);
+        const picks = setup.defaultModels([{ id: 'whatever-small' }, { id: 'qwen3-coder-480b' }, { id: 'gpt-oss-120b' }], 2);
+        assert.deepStrictEqual(picks, ['qwen3-coder-480b', 'gpt-oss-120b'], 'coding-capable families first');
+    });
+
+    test('hand-over summary keeps goal, changed files and latest turns', () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hoppy-sum-'));
+        const file = path.join(dir, 's.jsonl');
+        fs.writeFileSync(file, [
+            JSON.stringify({ type: 'user', message: { content: 'Add dark mode to settings' } }),
+            JSON.stringify({ type: 'assistant', message: { model: 'claude-opus-5-5', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: 'src/theme.ts' } }, { type: 'text', text: 'Theme toggle added.' }], usage: { input_tokens: 10, cache_read_input_tokens: 150000, cache_creation_input_tokens: 5000, output_tokens: 300 } } }),
+            JSON.stringify({ type: 'assistant', isApiErrorMessage: true, message: { model: '<synthetic>', content: [{ type: 'text', text: "You've hit your session limit" }] } }),
+        ].join('\n'));
+        const sum = chats.summarizeChat(file);
+        assert.ok(sum.includes('Add dark mode to settings'));
+        assert.ok(sum.includes('src/theme.ts'));
+        assert.ok(sum.includes('Theme toggle added.'));
+        assert.ok(!sum.includes('session limit'), 'limit notice not carried');
+        assert.strictEqual(chats.chatTokens(file), 155310);
+        fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    test('radar: a limit notice copied in from another account (older than the file) is ignored', async function () {
+        this.timeout(15000);
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hoppy-radar-copy-'));
+        const proj = path.join(dir, 'projects', 'c--demo');
+        fs.mkdirSync(proj, { recursive: true });
+        const file = path.join(proj, 'copied.jsonl');
+        const old = new Date(Date.now() - 2 * 3600000).toISOString();
+        fs.writeFileSync(file, limitEntry("You've hit your weekly limit · resets Dec 30, 6am", old) + '\n');
+        const store = new Map();
+        const radar = new limits.LimitRadar({ get: (k) => store.get(k), update: async (k, v) => void store.set(k, v), keys: () => [...store.keys()] });
+        radar.start([dir]);
+        try {
+            await new Promise((r) => setTimeout(r, 2500));
+            assert.strictEqual(radar.limitFor(dir), undefined, 'copied notice does not mark the account');
+        } finally {
+            radar.dispose();
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test('radar: an account that answers after its limit notice is no longer marked', async function () {
+        this.timeout(15000);
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hoppy-radar-lift-'));
+        const proj = path.join(dir, 'projects', 'c--demo');
+        fs.mkdirSync(proj, { recursive: true });
+        const file = path.join(proj, 'sess.jsonl');
+        fs.writeFileSync(file, '');
+        const store = new Map();
+        const radar = new limits.LimitRadar({ get: (k) => store.get(k), update: async (k, v) => void store.set(k, v), keys: () => [...store.keys()] });
+        radar.start([dir]);
+        try {
+            await new Promise((r) => setTimeout(r, 300));
+            fs.appendFileSync(file, limitEntry("You've hit your weekly limit · resets Dec 30, 6am", new Date(Date.now() - 5 * 60000).toISOString()) + '\n');
+            await new Promise((r) => setTimeout(r, 1200));
+            assert.ok(radar.limitFor(dir), 'marked after the notice');
+            const reply = { type: 'assistant', uuid: 'r1', timestamp: new Date().toISOString(), message: { id: 'msg_r1', model: 'claude-sonnet-5-5', content: [{ type: 'text', text: 'Done.' }], usage: { input_tokens: 1, output_tokens: 1 } } };
+            fs.appendFileSync(file, JSON.stringify(reply) + '\n');
+            await new Promise((r) => setTimeout(r, 1200));
+            assert.strictEqual(radar.limitFor(dir), undefined, 'cleared once the account answers again');
+        } finally {
+            radar.dispose();
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test('radar: a new chat hitting the same limit window still asks (older notice does not block it)', async function () {
+        this.timeout(15000);
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hoppy-radar-newchat-'));
+        const proj = path.join(dir, 'projects', 'c--demo');
+        fs.mkdirSync(proj, { recursive: true });
+        const text = "You've hit your weekly limit · resets Dec 30, 6am";
+        const store = new Map();
+        // an earlier notice for this account, same reset time, already recorded
+        store.set('hoppy.limits', { [path.normalize(dir).toLowerCase()]: { kind: 'weekly', text, hitAt: Date.now() - 4 * 60000, resetsAt: Date.parse('2099-12-30T06:00:00Z'), dir, sessionFile: path.join(proj, 'old.jsonl') } });
+        const radar = new limits.LimitRadar({ get: (k) => store.get(k), update: async (k, v) => void store.set(k, v), keys: () => [...store.keys()] });
+        const hits = [];
+        radar.onHit((h) => hits.push(h));
+        radar.start([dir]);
+        try {
+            await new Promise((r) => setTimeout(r, 300));
+            const file = path.join(proj, 'new-chat.jsonl');
+            fs.writeFileSync(file, limitEntry(text, new Date().toISOString()) + '\n');
+            for (let i = 0; i < 30 && !hits.length; i++) await new Promise((r) => setTimeout(r, 100));
+            assert.strictEqual(hits.length, 1, 'the new chat gets its question');
+        } finally {
+            radar.dispose();
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test('chat preview skips the editor context block the VS Code panel sends first', () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hoppy-preview-'));
+        const file = path.join(dir, 'p', 's.jsonl');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify({ type: 'user', message: { content: [{ type: 'text', text: '<ide_opened_file>App.tsx</ide_opened_file>' }, { type: 'text', text: 'Add a dark mode toggle' }] } }) + '\n');
+        const chat = chats.chatFromFile(file, { kind: 'claude', dir, label: 'x', loggedIn: true });
+        assert.strictEqual(chat.preview, 'Add a dark mode toggle');
+        fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    test('folder matching ignores case and a trailing separator', () => {
+        assert.ok(targets.sameDir('C:\\Users\\me\\.claude-account2\\', 'c:/users/ME/.claude-account2'));
+        assert.ok(!targets.sameDir('C:\\Users\\me\\.claude', 'C:\\Users\\me\\.claude-account2'));
+    });
+
+    test('limit setting is registered and on by default', () => {
+        assert.strictEqual(vscode.workspace.getConfiguration('hoppy').get('suggestOnLimit'), true);
     });
 
     suiteTeardown(async () => {

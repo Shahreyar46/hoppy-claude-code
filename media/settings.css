@@ -148,7 +148,7 @@ code,
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px 0;
+    gap: 6px 10px;
     padding: 12px 14px;
     border: 1px solid var(--mh-border);
     border-radius: var(--mh-radius);
@@ -159,45 +159,37 @@ code,
 .hop {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 5px 12px;
-    border-radius: 999px;
-    border: 1px solid var(--mh-border);
-    background: var(--mh-bg);
+    gap: 6px;
+    padding: 4px 12px;
+    border: 0;
+    border-right: 1px solid var(--mh-border);
+    border-radius: 0;
+    background: transparent;
     color: var(--mh-fg);
-    font-family: var(--mh-mono);
-    font-size: 0.92em;
+    font-size: 0.95em;
+    min-height: 26px;
+}
+
+.hop:last-child {
+    border-right: 0;
 }
 
 .hop:hover:not(:disabled) {
-    border-color: var(--mh-accent);
-    background: var(--mh-bg);
-}
-
-.hop .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 2px solid var(--mh-muted);
+    background: var(--vscode-toolbar-hoverBackground, var(--mh-surface-2));
 }
 
 .hop.current {
-    border-color: var(--mh-accent);
-    background: color-mix(in srgb, var(--mh-accent) 14%, var(--mh-bg));
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
     opacity: 1;
     cursor: default;
 }
 
-.hop.current .dot {
-    border-color: var(--mh-accent);
-    background: var(--mh-accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mh-accent) 30%, transparent);
-}
-
-.wire {
-    width: 22px;
-    height: 0;
-    border-top: 1px dashed var(--mh-border);
+.hops {
+    display: inline-flex;
+    border: 1px solid var(--mh-border);
+    border-radius: 4px;
+    overflow: hidden;
 }
 
 /* ---------- Tabs ---------- */
@@ -369,12 +361,11 @@ input[type='password'] {
     font-size: 0.78em;
     font-weight: 500;
     line-height: 1;
-    padding: 4px 8px;
-    border-radius: 999px;
+    padding: 3px 6px;
+    border-radius: 3px;
     border: 1px solid var(--mh-border);
     color: var(--mh-muted);
     white-space: nowrap;
-    font-family: var(--mh-mono);
 }
 
 .chip.ok {
@@ -387,6 +378,12 @@ input[type='password'] {
     color: var(--mh-warn);
     border-color: color-mix(in srgb, var(--mh-warn) 45%, transparent);
     background: color-mix(in srgb, var(--mh-warn) 10%, transparent);
+}
+
+.chip.err {
+    color: var(--mh-err);
+    border-color: color-mix(in srgb, var(--mh-err) 45%, transparent);
+    background: color-mix(in srgb, var(--mh-err) 10%, transparent);
 }
 
 .chip.info {
@@ -434,6 +431,72 @@ input[type='password'] {
     color: var(--vscode-button-foreground);
     background: color-mix(in srgb, var(--vscode-charts-orange, #d18616) 85%, var(--mh-bg));
     flex: none;
+}
+
+.usage {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 18px;
+    margin-top: 8px;
+}
+
+.usage .stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+}
+
+.usage .stat b {
+    font-family: var(--mh-mono);
+    font-size: 1.05em;
+    font-variant-numeric: tabular-nums;
+}
+
+.usage .stat span {
+    color: var(--mh-muted);
+    font-size: 0.9em;
+}
+
+.usage .models {
+    flex-basis: 100%;
+}
+
+.swatches {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.swatches .small {
+    margin-right: 4px;
+}
+
+.swatch {
+    width: 18px;
+    height: 18px;
+    min-width: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--sw);
+    border: 2px solid transparent;
+    box-shadow: 0 0 0 1px var(--mh-border);
+    cursor: pointer;
+}
+
+.swatch.on {
+    border-color: var(--mh-bg);
+    box-shadow: 0 0 0 2px var(--mh-accent);
+}
+
+.swatch.none {
+    background: linear-gradient(135deg, transparent 45%, var(--mh-muted) 45% 55%, transparent 55%), var(--mh-surface-2);
+}
+
+.swatch:focus-visible {
+    outline: 2px solid var(--mh-accent);
+    outline-offset: 2px;
 }
 
 .avatar.other {
@@ -503,18 +566,34 @@ input[type='password'] {
     --tile: var(--vscode-charts-orange, #d18616);
 }
 
+.p-groq {
+    --tile: var(--vscode-charts-red, #f14c4c);
+}
+
+.p-cerebras {
+    --tile: var(--vscode-charts-yellow, #cca700);
+}
+
+.p-mistral {
+    --tile: var(--vscode-terminal-ansiBrightYellow, #e5c07b);
+}
+
+.p-nvidia {
+    --tile: var(--vscode-terminal-ansiGreen, #4ec9b0);
+}
+
 .mono-tile {
     width: 38px;
     height: 38px;
-    border-radius: 8px;
+    border-radius: 6px;
     display: grid;
     place-items: center;
-    font-family: var(--mh-mono);
     font-weight: 700;
     font-size: 0.85em;
+    /* One quiet brand cue: the monogram color. The tile itself stays neutral. */
     color: var(--tile);
-    border: 1px solid color-mix(in srgb, var(--tile) 55%, transparent);
-    background: color-mix(in srgb, var(--tile) 12%, transparent);
+    border: 1px solid var(--mh-border);
+    background: var(--mh-surface-2);
     flex: none;
 }
 
@@ -834,7 +913,6 @@ input[type='password'] {
 @keyframes rise {
     from {
         opacity: 0;
-        transform: translateY(6px);
     }
     to {
         opacity: 1;
@@ -842,24 +920,8 @@ input[type='password'] {
     }
 }
 
-main.enter > * {
-    animation: rise 0.28s ease both;
-}
-
-main.enter > *:nth-child(2) {
-    animation-delay: 0.03s;
-}
-
-main.enter > *:nth-child(3) {
-    animation-delay: 0.06s;
-}
-
-main.enter > *:nth-child(4) {
-    animation-delay: 0.09s;
-}
-
-main.enter > *:nth-child(n + 5) {
-    animation-delay: 0.12s;
+main.enter {
+    animation: rise 0.12s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -949,4 +1011,165 @@ main.is-busy .toggle {
     height: 40px;
     border-radius: 10px;
     flex: none;
+}
+
+/* ---------- Providers: connected rows + add tiles ---------- */
+
+.prow,
+.ptile {
+    padding: 12px 14px;
+}
+
+.prow + .prow {
+    margin-top: 8px;
+}
+
+.prow.is-on {
+    box-shadow: inset 3px 0 0 var(--tile, var(--mh-accent));
+}
+
+.prow-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.prow-main h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 2px;
+}
+
+.grid:has(.ptile) {
+    align-items: start;
+}
+
+.ptile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.15s ease;
+}
+
+.ptile:hover,
+.ptile.is-open {
+    border-color: color-mix(in srgb, var(--tile, var(--mh-accent)) 60%, var(--mh-border));
+}
+
+.ptile .note {
+    margin: 0;
+}
+
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 3px;
+}
+
+.keyform {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--mh-border);
+    animation: mh-drop 0.16s ease-out;
+}
+
+.keyform .keyrow {
+    margin: 8px 0 0;
+}
+
+.steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+    color: var(--mh-muted);
+}
+
+.steps li {
+    counter-increment: step;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.steps li::before {
+    content: counter(step);
+    display: inline-grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--vscode-button-foreground);
+    background: var(--mh-accent);
+}
+
+@keyframes mh-drop {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .keyform {
+        animation: none;
+    }
+}
+
+/* ---------- Header label, limit banner, health bar ---------- */
+
+.route-label {
+    color: var(--mh-muted);
+    margin-right: 6px;
+    white-space: nowrap;
+}
+
+.callout.limit {
+    display: flex;
+}
+
+.callout.limit strong {
+    color: var(--mh-warn);
+}
+
+.healthbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border: 1px solid var(--mh-border);
+    border-radius: var(--mh-radius);
+    background: var(--mh-surface);
+}
+
+.hop svg {
+    width: 13px;
+    height: 13px;
+}
+
+.editrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 18px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--mh-border);
+}
+
+.editrow .swatches {
+    margin: 0;
+}
+
+.editrow code {
+    font-size: 0.95em;
 }

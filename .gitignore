@@ -14,3 +14,14 @@ video/stills/
 video/assets/
 video/.code-motion-history.json
 icon-dataurl.txt
+# tutorial video: keep capture scripts and sources, skip media, screenshots and renders
+video/tutorial/audio/
+video/tutorial/dist/
+video/tutorial/out/
+video/tutorial/shots/
+video/tutorial/stills/
+video/tutorial/*.png
+video/tutorial/intro/audio/
+video/tutorial/intro/dist/
+video/tutorial/intro/out/
+video/tutorial/src/video.built.html

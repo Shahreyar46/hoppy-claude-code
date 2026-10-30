@@ -22,8 +22,11 @@ Your Claude login is never routed through anything. Claude models always come fr
 
 ## Install
 
-1. Get `modelhop-<version>.vsix` from your team.
-2. VS Code: **Extensions** panel → `...` menu → **Install from VSIX…** → pick the file.
+1. VS Code: open **Extensions** (Ctrl+Shift+X) and search **Hoppy for Claude Code**.
+2. Click **Install** (and **Trust Publisher & Install** if VS Code asks).
+3. The getting started guide opens, and **Claude · <account>** appears in the status bar.
+
+Offline: **Extensions** → `...` menu → **Install from VSIX…** → pick `hoppy-claude-code-win32-x64-<version>.vsix`.
 
 ## How to switch accounts or models
 
@@ -45,12 +48,40 @@ Status bar → **Settings** opens a page with four tabs:
 
 | Tab | What you do there |
 |---|---|
-| **Accounts** | See every Claude account with its email, switch, rename, add a new one |
-| **AI Providers** | Turn OpenRouter, Gemini, DeepSeek and GLM on or off, paste a key and click **Test & save**, open the key page with **Get key ↗** |
+| **Accounts** | Every Claude account with its email and tokens used (last 5 hours, today, this week). Switch, add, or **Edit** to rename and pick a status bar color |
+| **AI Providers** | Connected services on top; **Connect** another below (OpenRouter, Gemini, DeepSeek, GLM, Groq, Cerebras, Mistral, NVIDIA NIM). Paste a key and Hoppy checks it before saving |
 | **Models** | Tick which models are available, search, show free or all, see price, size and which models read images. Pick the main and helper model |
-| **Backups** | Models tried automatically when the main one is busy or out of free requests. Warns if none can read screenshots |
+| **Backups** | Models tried automatically when the main one is busy or out of free requests. **Check models** sends one tiny request to each and shows which work right now; **Put working first** reorders them |
 
 Keys are checked live before saving and stored in Windows Credential Manager (VS Code secret storage) plus the local ccr config. The page only ever shows the last 4 characters. Turning a provider off keeps its key, so turning it back on needs no re-entry.
+
+## When you hit a limit
+
+When a Claude account reaches its session or weekly limit, Hoppy notices within a second and asks where to keep going:
+
+- **Continue on <another account>**: the chat is copied there and opens in a new tab. Send a message and carry on.
+- **Continue on Other AI**: same, on your other AI models. If the chat is bigger than the model can hold, Hoppy offers a short hand-over instead (goal, files changed, latest messages).
+- The account shows `⌚ resets 12:50am` in the menu and the status bar turns orange until the limit resets.
+
+Hoppy reads only Claude Code's local chat files for this; nothing is sent anywhere. Turn it off with `hoppy.suggestOnLimit`.
+
+When the limit resets, Hoppy tells you and offers to switch back.
+
+Tired of the question? After your first hop Hoppy offers **Always continue on another account** (or Other AI). Change it any time with `hoppy.onLimit`; the notice after an automatic hop has **Switch back** and **Ask me next time**.
+
+**Ctrl+Alt+H** flips back to the account or model you used before.
+
+## One account per project
+
+Hoppy menu → **Always use Claude · Work in this project**. Whenever you open or come back to that project's window, Hoppy points the Claude panel at Work again. Switching inside the project moves the pin; **This project always uses …** in the menu removes it.
+
+## Share your setup
+
+Hoppy menu → **More** → **Export settings** writes your model choices, backups, limit behaviour and account names to a JSON file. **Never** API keys or logins. **Import settings** on another PC or a teammate's applies what fits there and lists services that still need their own key.
+
+## Usage
+
+The Hoppy menu and the Accounts tab show tokens each account used in the last 5 hours, today and this week, counted from the local chat files (chats Hoppy copied from another account are not counted twice). Anthropic does not publish exact plan limits, so this is a guide, not a percentage. Turn it off with `hoppy.showUsage`.
 
 ## Claude accounts
 
@@ -111,6 +142,11 @@ Use only accounts you own (for example one for work and one personal). Using sev
 | `hoppy.fallbackModels` | VL → Laguna → Gemma → Inkling → Gemini | Order tried when a model fails |
 | `hoppy.routerConfigDir` | `~/.claude-router` | Claude Code folder used in Other AI mode |
 | `hoppy.claudeConfigDirs` | `[]` | Extra Claude folders to search for chats to hand off |
+| `hoppy.suggestOnLimit` | `true` | Offer to continue elsewhere when a Claude account hits its limit |
+| `hoppy.showUsage` | `true` | Show tokens used per account in the menu and settings |
+| `hoppy.accountColors` | `{}` | Status bar color per account (set in Settings → Accounts → Edit) |
+| `hoppy.onLimit` | `ask` | On a limit: `ask`, `nextAccount` or `otherAi` |
+| `hoppy.projectAccounts` | `{}` | Projects pinned to an account (set from the Hoppy menu) |
 
 After changing models or the backups list in settings.json, run **Refresh model list** to apply them.
 
@@ -128,7 +164,7 @@ After changing models or the backups list in settings.json, run **Refresh model 
 
 ## How it works
 
-- [Claude Code Router](https://github.com/musistudio/claude-code-router) (ccr) runs a local gateway on `127.0.0.1:3456` that speaks Claude's API format and forwards requests to OpenRouter, Gemini, DeepSeek or GLM.
+- [Claude Code Router](https://github.com/musistudio/claude-code-router) (ccr) runs a local gateway on `127.0.0.1:3456` that speaks Claude's API format and forwards requests to the services you connected (OpenRouter, Gemini, DeepSeek, GLM, Groq, Cerebras, Mistral or NVIDIA NIM).
 - Switching sets `CLAUDE_CONFIG_DIR` for the Claude Code extension: an account folder (`~/.claude`, `~/.claude-account2`, …) or the Other AI folder (`~/.claude-router`) that points at the gateway. Logins stay in their own folders and are never copied or forwarded.
 - Chats are JSONL files under `<folder>/projects/<project>/`. Syncing and handoff copy them between folders. When a chat moves to a different Claude account, Claude's internal "thinking" entries are removed (they are tied to the account that made them) and the chat is re-linked around them; every message, tool call and result is kept. The original file is never changed.
 - ccr stores its config in SQLite. The extension edits it with a small Node script while ccr is stopped. API keys are passed through stdin and never printed.
@@ -136,12 +172,12 @@ After changing models or the backups list in settings.json, run **Refresh model 
 
 ## Privacy
 
-Code you send in Other AI mode goes to the provider you picked (OpenRouter and the model host, Google, DeepSeek or Z.ai). Check their data policies before using them on client or company code. Never send secrets.
+Code you send in Other AI mode goes to the provider you picked (OpenRouter and the model host, Google, DeepSeek, Z.ai, Groq, Cerebras, Mistral or NVIDIA). **Check models** sends one short test message to each model you check, with your key. Limit detection and usage numbers are read from local files only. Check their data policies before using them on client or company code. Never send secrets.
 
 ## Build from source
 
 ```powershell
 npm install
 npm run compile
-npm run package   # creates modelhop-<version>.vsix
+npx vsce package --target win32-x64   # creates hoppy-claude-code-win32-x64-<version>.vsix
 ```

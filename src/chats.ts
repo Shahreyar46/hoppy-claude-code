@@ -1,7 +1,9 @@
+import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { listTargets, Target } from './targets';
+import { noteImported } from './usage';
 
 export interface Chat {
     file: string;
@@ -38,9 +40,12 @@ function firstUserMessage(content: string): string {
                 continue;
             }
             const c = entry.message?.content;
-            const text = typeof c === 'string' ? c : Array.isArray(c) ? c.find((x: any) => x.type === 'text')?.text : undefined;
-            if (text && !text.startsWith('<')) {
-                return text.replace(/\s+/g, ' ').slice(0, 90);
+            // The VS Code panel sends editor context (<ide_opened_file>…) as its own text block before
+            // the user's words, so look at every text block, not only the first.
+            const texts: string[] = typeof c === 'string' ? [c] : Array.isArray(c) ? c.filter((x: any) => x?.type === 'text').map((x: any) => String(x.text || '')) : [];
+            const text = texts.find((s) => s.trim() && !s.trim().startsWith('<'));
+            if (text) {
+                return text.replace(/\s+/g, ' ').trim().slice(0, 90);
             }
         } catch {
             // partial or non-JSON line
@@ -88,6 +93,14 @@ export function findChats(): Chat[] {
  * Messages, tool calls and results are all kept.
  */
 export function stripThinking(content: string): string {
+    return cleanChat(content, { thinking: true });
+}
+
+/**
+ * Removes entries that should not travel to another account or model, re-linking the chat around them:
+ * Claude Code's own error notices ("You've hit your session limit…") always, thinking when asked.
+ */
+export function cleanChat(content: string, opts: { thinking: boolean }): string {
     const lines = content.split('\n');
     const removed = new Map<string, string | null>();
     const kept: string[] = [];
@@ -99,7 +112,11 @@ export function stripThinking(content: string): string {
             kept.push(line);
             continue;
         }
-        const blocks = entry.type === 'assistant' && Array.isArray(entry.message?.content) ? entry.message.content : null;
+        if (entry.type === 'assistant' && entry.isApiErrorMessage === true && entry.uuid) {
+            removed.set(entry.uuid, entry.parentUuid ?? null);
+            continue;
+        }
+        const blocks = opts.thinking && entry.type === 'assistant' && Array.isArray(entry.message?.content) ? entry.message.content : null;
         if (blocks && blocks.some((b: any) => b.type === 'thinking' || b.type === 'redacted_thinking')) {
             const rest = blocks.filter((b: any) => b.type !== 'thinking' && b.type !== 'redacted_thinking');
             if (!rest.length) {
@@ -141,11 +158,59 @@ export function copyChat(chat: Chat, dest: Target): void {
     fs.mkdirSync(destDir, { recursive: true });
     const destFile = path.join(destDir, path.basename(chat.file));
     let content = fs.readFileSync(chat.file, 'utf8');
-    if (dest.kind === 'claude' && chat.source.dir.toLowerCase() !== dest.dir.toLowerCase()) {
-        content = stripThinking(content);
+    if (chat.source.dir.toLowerCase() !== dest.dir.toLowerCase()) {
+        content = cleanChat(content, { thinking: dest.kind === 'claude' });
     }
+    let previous = '';
+    try {
+        previous = fs.readFileSync(destFile, 'utf8');
+    } catch {
+        // new file for this account
+    }
+    noteImported(dest.dir, content, previous);
     fs.writeFileSync(destFile, content);
     fs.utimesSync(destFile, chat.modified, chat.modified);
+}
+
+/**
+ * Copies a chat to another account or model under a NEW session id and returns that id.
+ * Claude Code reuses an open tab when asked to open a session id it already shows, so continuing under the
+ * same id would just refocus the old tab, still running on the old account. A fresh id always opens a new
+ * tab on the destination; the original chat stays as it was.
+ */
+export function forkChat(chat: Chat, dest: Target): string {
+    const destDir = path.join(dest.dir, 'projects', chat.projectFolder);
+    fs.mkdirSync(destDir, { recursive: true });
+    const oldId = path.basename(chat.file, '.jsonl');
+    const newId = randomUUID();
+    let content = cleanChat(fs.readFileSync(chat.file, 'utf8'), { thinking: dest.kind === 'claude' });
+    content = content.split(`"sessionId":"${oldId}"`).join(`"sessionId":"${newId}"`);
+    noteImported(dest.dir, content, '');
+    fs.writeFileSync(path.join(destDir, `${newId}.jsonl`), content);
+    return newId;
+}
+
+/** Session id Claude Code uses to reopen a chat: the chat file's name. */
+export function sessionId(chat: Chat): string {
+    return path.basename(chat.file, '.jsonl');
+}
+
+/** Wraps one chat file (e.g. the one that just hit a limit) as a Chat. */
+export function chatFromFile(file: string, source: Target): Chat | undefined {
+    try {
+        const stat = fs.statSync(file);
+        const content = fs.readFileSync(file, 'utf8');
+        return {
+            file,
+            source,
+            projectFolder: path.basename(path.dirname(file)),
+            modified: stat.mtime,
+            preview: firstUserMessage(content),
+            hasImages: content.includes('"type":"image"'),
+        };
+    } catch {
+        return undefined;
+    }
 }
 
 /** Makes every chat of the open folder available in the target: copies ones it lacks or has an older copy of. */
@@ -173,6 +238,12 @@ export function syncChatsInto(dest: Target): number {
     return copied;
 }
 
+/** True when a chat file belongs to the folder open in this window. */
+export function belongsToOpenProject(file: string): boolean {
+    const folder = workspaceFolder();
+    return !!folder && path.basename(path.dirname(file)).toLowerCase() === projectKey(folder);
+}
+
 export async function pickChat(title: string): Promise<Chat | undefined> {
     if (!workspaceFolder()) {
         vscode.window.showWarningMessage('Open the project folder first.');
@@ -193,4 +264,104 @@ export async function pickChat(title: string): Promise<Chat | undefined> {
         { title, matchOnDescription: true },
     );
     return picked?.chat;
+}
+
+/**
+ * Size of the chat as the model last saw it: the newest reply's prompt tokens (input + cache) plus its
+ * output. Exact for Claude chats, since the API reports it; 0 when unknown.
+ */
+export function chatTokens(file: string): number {
+    let lines: string[];
+    try {
+        lines = fs.readFileSync(file, 'utf8').split('\n');
+    } catch {
+        return 0;
+    }
+    for (let i = lines.length - 1; i >= 0; i--) {
+        if (!lines[i].includes('"usage"')) {
+            continue;
+        }
+        try {
+            const e = JSON.parse(lines[i]);
+            const u = e.message?.usage;
+            if (e.type === 'assistant' && u && e.message?.model !== '<synthetic>') {
+                return (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.output_tokens || 0);
+            }
+        } catch {
+            // partial line
+        }
+    }
+    return 0;
+}
+
+function textOf(content: unknown): string {
+    if (typeof content === 'string') {
+        return content;
+    }
+    if (Array.isArray(content)) {
+        return content
+            .filter((c: any) => c?.type === 'text' && typeof c.text === 'string')
+            .map((c: any) => c.text)
+            .join('\n');
+    }
+    return '';
+}
+
+/**
+ * A compact hand-over for a model that cannot hold the whole chat: the goal, files touched and the
+ * latest turns. Built locally from the chat file; no model is called.
+ */
+export function summarizeChat(file: string, maxChars = 16000): string {
+    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    let goal = '';
+    const files = new Set<string>();
+    const turns: string[] = [];
+    for (const line of lines) {
+        let e: any;
+        try {
+            e = JSON.parse(line);
+        } catch {
+            continue;
+        }
+        if (e.isMeta || e.isApiErrorMessage || e.isSidechain) {
+            continue;
+        }
+        const content = e.message?.content;
+        if (Array.isArray(content)) {
+            for (const c of content) {
+                const p = c?.type === 'tool_use' ? c.input?.file_path || c.input?.notebook_path : undefined;
+                if (typeof p === 'string' && c.name !== 'Read') {
+                    files.add(p);
+                }
+            }
+        }
+        const text = textOf(content).trim();
+        if (!text || text.startsWith('<')) {
+            continue;
+        }
+        if (e.type === 'user') {
+            goal ||= text;
+            turns.push(`User: ${text.slice(0, 1200)}`);
+        } else if (e.type === 'assistant') {
+            turns.push(`Assistant: ${text.slice(0, 1200)}`);
+        }
+    }
+    const head = [
+        'I am continuing a task from another chat that is too long for this model. Here is the hand-over.',
+        '',
+        `Goal (first request): ${goal.slice(0, 1500) || '(unknown)'}`,
+        '',
+        files.size ? `Files changed so far:\n${[...files].slice(-30).map((f) => `- ${f}`).join('\n')}` : 'Files changed so far: none recorded',
+        '',
+        'Latest conversation:',
+    ].join('\n');
+    const tail = '\n\nPlease read the files you need, then carry on from where this stopped. Ask me if something is unclear.';
+    const budget = maxChars - head.length - tail.length;
+    const recent: string[] = [];
+    let used = 0;
+    for (let i = turns.length - 1; i >= 0 && used + turns[i].length + 2 <= budget; i--) {
+        recent.unshift(turns[i]);
+        used += turns[i].length + 2;
+    }
+    return `${head}\n${recent.join('\n\n')}${tail}`;
 }

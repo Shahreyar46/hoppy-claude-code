@@ -11,3 +11,4 @@ share/**
 .playwright-mcp/**
 .vscode-test/**
 **/*.zip
+docs/**

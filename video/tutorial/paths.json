@@ -1,0 +1,10 @@
+{
+  "HOME": "C:\\hoppy-demo\\home",
+  "APPDATA": "C:\\hoppy-demo\\appdata",
+  "PROJECT": "C:\\hoppy-demo\\acme-shop",
+  "USERDATA": "C:\\hoppy-demo\\user-data",
+  "EXT": "C:\\hoppy-demo\\extensions",
+  "WORK": "C:\\hoppy-demo\\home\\.claude",
+  "PERSONAL": "C:\\hoppy-demo\\home\\.claude-account2",
+  "projectKey": "C--hoppy-demo-acme-shop"
+}

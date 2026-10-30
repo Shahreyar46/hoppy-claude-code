@@ -5,55 +5,62 @@
     "rate": "-6%",
     "style": "Friendly, confident product-film narrator. Warm, clear, unhurried."
   },
-  "lead_in": 5.2,
+  "lead_in": 0.7,
   "gap": 0.42,
   "lines": [
     {
+      "id": "h1",
+      "text": "You are coding with Claude Code.",
+      "pause": 0.2
+    },
+    {
+      "id": "h2",
+      "text": "Then the limit hits.",
+      "pause": 0.5
+    },
+    {
+      "id": "h3",
+      "text": "Now what? Wait five hours?",
+      "pause": 2.9
+    },
+    {
       "id": "meet",
       "text": "Meet Hoppy.",
-      "pause": 0.9
+      "pause": 0.5
     },
     {
-      "id": "q1",
-      "text": "Ran out of Claude tokens in the middle of a task?",
-      "pause": 0.35
+      "id": "what1",
+      "text": "Switch Claude accounts and AI models in one click, right inside VS Code.",
+      "pause": 0.5
     },
     {
-      "id": "q2",
-      "text": "Juggling more than one Claude account?",
-      "pause": 0.35
+      "id": "b1",
+      "text": "One. Switch accounts instantly. No reload.",
+      "pause": 0.4
     },
     {
-      "id": "q3",
-      "text": "Lost your session, and all its context?",
-      "pause": 0.35
+      "id": "b2",
+      "text": "Two. Your chat comes with you. Just type slash resume.",
+      "pause": 0.4
     },
     {
-      "id": "q4",
-      "text": "Wish you could use other AI models too?",
+      "id": "b3",
+      "text": "Three. Add other AI models with your own keys, free or paid.",
+      "pause": 0.5
+    },
+    {
+      "id": "get1",
+      "text": "Hoppy is free on the VS Code Marketplace.",
+      "pause": 0.8
+    },
+    {
+      "id": "tut0",
+      "text": "Now, let us set it up, step by step.",
       "pause": 0.6
     },
     {
-      "id": "fix",
-      "text": "Here is how Hoppy fixes all of it.",
-      "pause": 0.3
-    },
-    {
-      "id": "sol1",
-      "text": "All your Claude accounts, in one place."
-    },
-    {
-      "id": "sol2",
-      "text": "Other AI models, with your own API keys."
-    },
-    {
-      "id": "sol3",
-      "text": "And your chats and context, never lost.",
-      "pause": 0.7
-    },
-    {
       "id": "inst1",
-      "text": "Getting started takes a minute."
+      "text": "First, install it."
     },
     {
       "id": "inst2",
