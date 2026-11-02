@@ -75,32 +75,50 @@ function sortedTargets(): Target[] {
     return all.map((t, i) => ({ t, i })).sort((a, b) => rank(a.t) - rank(b.t) || a.i - b.i).map((x) => x.t);
 }
 
-/** Hover table for the usage item: one row per window per account, with a text bar. */
+/** Colored bar for hover tables: green, amber at 80%, red at 95% (spans with background survive VS Code's sanitizer). */
+function hoverBar(usedPct: number): string {
+    const total = 20;
+    const filled = Math.max(0, Math.min(total, Math.round((usedPct / 100) * total)));
+    const color = usedPct >= 95 ? '#f44336' : usedPct >= 80 ? '#ff9800' : '#4caf50';
+    const sp = (n: number) => '&nbsp;'.repeat(n);
+    return `<span style="background-color:#8a8a8a;border-radius:3px;font-size:48%;"><span style="background-color:${color};border-radius:3px;">${sp(filled)}</span>${sp(total - filled)}</span>`;
+}
+
+const htmlEsc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
+
+/** Hover table for the usage item: every Claude account, 5 h and week, bar, % used, reset time. */
 function usageTooltip(rows: UsageRow[]): vscode.MarkdownString {
     const md = new vscode.MarkdownString(undefined, true);
+    md.supportHtml = true;
     md.isTrusted = { enabledCommands: ['hoppy.usageView.focus', 'hoppy.refreshUsage'] };
-    const bar = (left: number | undefined) => {
-        if (left === undefined) {
-            return '';
-        }
-        const used = Math.round((1 - left) * 10);
-        return `${'█'.repeat(used)}${'░'.repeat(10 - used)}`;
-    };
-    md.appendMarkdown('**Hoppy · Claude usage**\n\n| Account | Window | Used | | Resets |\n|---|---|--:|---|---|\n');
+    const when = (ms?: number) => (ms ? new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '');
+    md.appendMarkdown('**Hoppy · Claude usage**\n\n<table>\n');
     for (const r of rows.filter((x) => x.kind === 'claude')) {
-        const name = `${r.current ? '**▶ ' : ''}${r.label}${r.current ? '**' : ''}`;
-        const lines = quotaDetail(r) ? [['5 h', r.h5Left, r.h5Reset], ['week', r.weekLeft, r.weekReset]] : [];
-        if (!lines.length) {
-            md.appendMarkdown(`| ${name} | 5 h | ${r.h5 === undefined ? '–' : formatTokens(r.h5)} tokens | | ${r.limit ?? ''} |\n`);
+        const name = r.current ? `<b>▶ ${htmlEsc(r.label)}</b>` : htmlEsc(r.label);
+        md.appendMarkdown(`<tr><td colspan="4">${name}${r.limit ? ` · <span style="color:#f44336;">${htmlEsc(r.limit)}</span>` : ''}</td></tr>\n`);
+        const windows: [string, number | undefined, number | undefined][] = [['5 h', r.h5Left, r.h5Reset], ['week', r.weekLeft, r.weekReset]];
+        if (r.h5Left === undefined && r.weekLeft === undefined) {
+            const why = r.h5 === undefined ? 'no data yet' : `${formatTokens(r.h5)} tokens in 5 h`;
+            md.appendMarkdown(`<tr><td>&nbsp;&nbsp;</td><td colspan="3"><i>${why} · % shows after this account is used in Claude Code</i></td></tr>\n`);
             continue;
         }
-        lines.forEach(([w, left, reset], i) => {
-            const pct = left === undefined ? '–' : `${r.exact ? '' : '~'}${Math.round((1 - (left as number)) * 100)}%`;
-            const at = reset ? new Date(reset as number).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
-            md.appendMarkdown(`| ${i ? '' : name} | ${w} | ${pct} | \`${bar(left as number | undefined)}\` | ${at} |\n`);
-        });
+        for (const [w, left, reset] of windows.filter(([, l]) => l !== undefined)) {
+            const used = Math.round((1 - (left as number)) * 100);
+            md.appendMarkdown(`<tr><td>&nbsp;&nbsp;${w}</td><td>${hoverBar(used)}</td><td align="right">&nbsp;${r.exact ? '' : '~'}${used}%</td><td align="right">&nbsp;&nbsp;${when(reset)}</td></tr>\n`);
+        }
     }
-    md.appendMarkdown('\n"~" = estimate from local chat files · [Open Hoppy Usage](command:hoppy.usageView.focus) · [Refresh](command:hoppy.refreshUsage)');
+    const other = rows.find((x) => x.kind === 'other');
+    if (other) {
+        const name = other.current ? '<b>▶ Other AI</b>' : 'Other AI';
+        md.appendMarkdown(`<tr><td colspan="4">${name}</td></tr>\n`);
+        if (lastQuota && lastQuota.limit > 0) {
+            const used = Math.round(((lastQuota.limit - lastQuota.remaining) / lastQuota.limit) * 100);
+            md.appendMarkdown(`<tr><td>&nbsp;&nbsp;OpenRouter free</td><td>${hoverBar(used)}</td><td align="right">&nbsp;${lastQuota.remaining}/${lastQuota.limit}</td><td align="right">&nbsp;&nbsp;left today</td></tr>\n`);
+        }
+        md.appendMarkdown(`<tr><td>&nbsp;&nbsp;tokens</td><td colspan="3">${other.today === undefined ? 'no data yet' : `${formatTokens(other.today)} today · ${formatTokens(other.week ?? 0)} this week`}</td></tr>\n`);
+    }
+    md.appendMarkdown('</table>\n\n');
+    md.appendMarkdown('[Open Hoppy Usage](command:hoppy.usageView.focus) · [Refresh](command:hoppy.refreshUsage)' + (rows.some((r) => r.kind === 'claude' && !r.exact && (r.h5Left !== undefined || r.weekLeft !== undefined)) ? ' · "~" = estimate' : ''));
     return md;
 }
 
