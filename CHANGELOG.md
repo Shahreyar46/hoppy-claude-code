@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1
+
+- **Video guides**: the getting started guide now opens with a short "Watch how it works" step, and **More → Video guides** opens the 2-minute overview or the full tutorial on YouTube.
+- README shows both videos.
+- **No more black window**: on Windows, Other AI no longer opens a `node.exe` console window that comes back when closed. Hoppy now runs claude-code-router hidden in the background, and replaces an already running visible one once.
+
 ## 1.1.0
 
 **Never stuck.**

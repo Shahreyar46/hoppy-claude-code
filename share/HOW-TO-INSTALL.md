@@ -15,7 +15,7 @@ Use all your Claude accounts and other AI models (free or paid) in the Claude Co
 3. Go to **Extensions** (Ctrl+Shift+X).
 4. Click the **`...`** menu at the top of the Extensions panel → **Install from VSIX…**
 5. Pick **`hoppy-claude-code-win32-x64-1.1.0.vsix`** from this folder (on an ARM Windows PC, pick `hoppy-claude-code-win32-arm64-1.1.0.vsix`).
-6. The **Get started with Hoppy** guide opens. Follow its 5 short steps.
+6. The **Get started with Hoppy** guide opens. Watch the short video, then follow its 5 steps.
 
 ## After installing
 

@@ -2,7 +2,7 @@
   "name": "hoppy-claude-code",
   "displayName": "Hoppy for Claude Code",
   "description": "Out of tokens? Hoppy hops. Switch between your Claude accounts and other AI models (free or paid: OpenRouter, Gemini, DeepSeek, GLM) in Claude Code, keep your chat context, and continue any chat on another account or model. Not affiliated with Anthropic.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "shahreyar",
   "license": "MIT",
   "engines": {
@@ -29,6 +29,10 @@
       {
         "command": "hoppy.guide",
         "title": "Hoppy: Getting Started Guide"
+      },
+      {
+        "command": "hoppy.videos",
+        "title": "Hoppy: Watch Video Guides"
       },
       {
         "command": "hoppy.setup",
@@ -204,8 +208,22 @@
       {
         "id": "getStarted",
         "title": "Get started with Hoppy",
-        "description": "Use all your Claude accounts and other AI models in the Claude panel. 5 short steps.",
+        "description": "Use all your Claude accounts and other AI models in the Claude panel. A short video, then 5 steps.",
         "steps": [
+          {
+            "id": "videos",
+            "title": "Watch how it works",
+            "description": "New to Hoppy? See it in action first. The overview takes 2 minutes; the tutorial shows every feature step by step.\n[Watch the overview (2 min)](https://youtu.be/zhqcQeih3do)\n[Watch the full tutorial (4 min)](https://youtu.be/Sl9I1QzJ-zs)",
+            "media": {
+              "image": "media/walkthrough/videos.jpg",
+              "altText": "Hoppy for Claude Code video: switch Claude accounts and AI models in one click."
+            },
+            "completionEvents": [
+              "onLink:https://youtu.be/zhqcQeih3do",
+              "onLink:https://youtu.be/Sl9I1QzJ-zs",
+              "onCommand:hoppy.videos"
+            ]
+          },
           {
             "id": "switch",
             "title": "Switch in one click",

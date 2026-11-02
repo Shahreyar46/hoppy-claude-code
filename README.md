@@ -13,6 +13,15 @@ Use **all your Claude accounts** and **other AI models** (free OpenRouter models
 
 Your Claude login is never routed through anything. Claude models always come from your own plan.
 
+## Videos
+
+| Overview (2 min) | Full tutorial (4 min) |
+|---|---|
+| [![Hoppy overview](https://i.ytimg.com/vi/zhqcQeih3do/hqdefault.jpg)](https://youtu.be/zhqcQeih3do) | [![Hoppy full tutorial](https://i.ytimg.com/vi/Sl9I1QzJ-zs/hqdefault.jpg)](https://youtu.be/Sl9I1QzJ-zs) |
+| Switch accounts and models, keep going when a limit hits | Every feature step by step, on real screens |
+
+Inside VS Code: Hoppy menu → **More** → **Video guides**.
+
 ## Requirements
 
 - Windows 10/11

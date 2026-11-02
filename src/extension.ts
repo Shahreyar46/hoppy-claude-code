@@ -378,9 +378,22 @@ async function showMenu(context: vscode.ExtensionContext): Promise<void> {
     }
 }
 
+const VIDEOS = [
+    { label: '$(play-circle) Overview', description: '2 min', detail: 'What Hoppy does: switch accounts and models, keep going when a limit hits', url: 'https://youtu.be/zhqcQeih3do' },
+    { label: '$(play-circle) Full tutorial', description: '4 min', detail: 'Every feature step by step, on real screens', url: 'https://youtu.be/Sl9I1QzJ-zs' },
+];
+
+async function showVideos(): Promise<void> {
+    const pick = await vscode.window.showQuickPick(VIDEOS, { title: 'Hoppy · Video guides' });
+    if (pick) {
+        await vscode.env.openExternal(vscode.Uri.parse(pick.url));
+    }
+}
+
 async function showMore(): Promise<void> {
     const items: (vscode.QuickPickItem & { command: string })[] = [
         { label: '$(book) Getting started guide', command: 'hoppy.guide' },
+        { label: '$(play-circle) Video guides', detail: 'Watch the 2-minute overview or the full tutorial', command: 'hoppy.videos' },
         { label: '$(lightbulb) Install /second-opinion skill', detail: 'Ask other models from inside a Claude chat', command: 'hoppy.installSkill' },
         { label: '$(sync) Refresh model list', command: 'hoppy.syncFreeModels' },
         { label: '$(debug-restart) Restart Other AI', detail: 'Use this if Other AI shows "stopped"', command: 'hoppy.gatewayRestart' },
@@ -424,6 +437,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     register('hoppy.menu', () => showMenu(context));
     register('hoppy.more', () => showMore());
+    register('hoppy.videos', () => showVideos());
     context.subscriptions.push(
         vscode.commands.registerCommand('hoppy.settings', (tab?: string) => SettingsPanel.show(context, tab)),
     );

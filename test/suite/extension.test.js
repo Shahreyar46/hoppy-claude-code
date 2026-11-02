@@ -178,7 +178,11 @@ suite('Hoppy', () => {
         const pkg = ext().packageJSON;
         const walk = pkg.contributes.walkthroughs.find((w) => w.id === 'getStarted');
         assert.ok(walk, 'walkthrough getStarted exists');
-        assert.strictEqual(walk.steps.length, 5);
+        assert.strictEqual(walk.steps.length, 6);
+        assert.strictEqual(walk.steps[0].id, 'videos', 'guide opens with the video step');
+        for (const url of ['https://youtu.be/zhqcQeih3do', 'https://youtu.be/Sl9I1QzJ-zs']) {
+            assert.ok(walk.steps[0].description.includes(url), `video link ${url}`);
+        }
         for (const step of walk.steps) {
             const file = step.media.svg || step.media.markdown || step.media.image;
             assert.ok(fs.existsSync(path.join(ext().extensionPath, file)), `missing ${file}`);
@@ -189,6 +193,11 @@ suite('Hoppy', () => {
 
     test('guide command opens without error', async () => {
         await vscode.commands.executeCommand('hoppy.guide');
+    });
+
+    test('video guides command is registered', async () => {
+        const all = await vscode.commands.getCommands(true);
+        assert.ok(all.includes('hoppy.videos'));
     });
 
     test('settings can open straight on a tab (used by the guide buttons)', async () => {

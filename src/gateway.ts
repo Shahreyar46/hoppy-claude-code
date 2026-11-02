@@ -1,4 +1,5 @@
 import { exec, spawn } from 'child_process';
+import * as fs from 'fs';
 import * as net from 'net';
 import * as path from 'path';
 import { GATEWAY_PORT } from './paths';
@@ -46,13 +47,46 @@ export async function installCcr(): Promise<{ ok: boolean; output: string }> {
     return { ok: r.ok && (await isCcrInstalled()), output: (r.stderr || r.stdout).trim().split('\n').slice(-5).join('\n') };
 }
 
-export async function startGateway(): Promise<boolean> {
-    if (await isGatewayUp()) {
-        return true;
+/** Runs a PowerShell script without a window. Encoded, so paths need no shell quoting. */
+function powershell(script: string, timeoutMs = 30000): ReturnType<typeof run> {
+    const encoded = Buffer.from(script, 'utf16le').toString('base64');
+    return run(`powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encoded}`, timeoutMs);
+}
+
+const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
+
+/** ccr's own entry script, from the global npm folder. */
+async function ccrCli(): Promise<string | undefined> {
+    const r = await run('npm root -g', 15000);
+    const file = path.join(r.stdout.trim(), '@musistudio', 'claude-code-router', 'dist', 'main', 'cli.js');
+    return r.ok && fs.existsSync(file) ? file : undefined;
+}
+
+// On Windows, "ccr start" runs a background service that launches the gateway in a
+// visible console window (and relaunches it when the window is closed). Hoppy runs
+// "ccr serve" instead: WMI starts it outside VS Code, so it outlives the window, with
+// a hidden console that the gateway inherits.
+const CCR_SERVE = `Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'claude-code-router' -and $_.CommandLine -match 'cli\\.js"? serve' }`;
+const CCR_SERVICE = `Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'claude-code-router' -and $_.CommandLine -match 'daemon-child' }`;
+
+async function startHidden(): Promise<boolean> {
+    const cli = await ccrCli();
+    if (!cli) {
+        return false;
     }
-    await run('ccr start --no-open');
-    for (let i = 0; i < 20; i++) {
-        if (await isGatewayUp()) {
+    const r = await powershell([
+        '$node = (Get-Command node -ErrorAction Stop).Source',
+        '$si = New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ ShowWindow = [uint16]0 }',
+        `$line = '"' + $node + '" "' + ${psQuote(cli)} + '" serve --no-open'`,
+        '$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $line; CurrentDirectory = $env:USERPROFILE; ProcessStartupInformation = $si }',
+        'exit $r.ReturnValue',
+    ].join('\n'));
+    return r.ok;
+}
+
+async function waitFor(up: boolean, tries: number): Promise<boolean> {
+    for (let i = 0; i < tries; i++) {
+        if ((await isGatewayUp()) === up) {
             return true;
         }
         await new Promise((r) => setTimeout(r, 500));
@@ -60,8 +94,26 @@ export async function startGateway(): Promise<boolean> {
     return false;
 }
 
+export async function startGateway(): Promise<boolean> {
+    if (await isGatewayUp()) {
+        // A gateway started by "ccr start" has a console window; swap it for a hidden one once.
+        if (process.platform !== 'win32' || !(await powershell(`if (${CCR_SERVICE}) { exit 0 } else { exit 1 }`)).ok) {
+            return true;
+        }
+        await stopGateway();
+    }
+    if (!(process.platform === 'win32' && (await startHidden()) && (await waitFor(true, 20)))) {
+        await run('ccr start --no-open');
+    }
+    return waitFor(true, 20);
+}
+
 export async function stopGateway(): Promise<void> {
     await run('ccr stop');
+    if (process.platform === 'win32') {
+        await powershell(`${CCR_SERVE} | ForEach-Object { taskkill /PID $_.ProcessId /T /F | Out-Null }`);
+    }
+    await waitFor(false, 10);
 }
 
 /** System Node (not VS Code's Electron); the helper needs node:sqlite (Node 22.5+). */
