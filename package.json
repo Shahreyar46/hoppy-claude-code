@@ -2,7 +2,7 @@
   "name": "hoppy-claude-code",
   "displayName": "Hoppy for Claude Code",
   "description": "Out of tokens? Hoppy hops. Switch between your Claude accounts and other AI models (free or paid: OpenRouter, Gemini, DeepSeek, GLM) in Claude Code, keep your chat context, and continue any chat on another account or model. Not affiliated with Anthropic.",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "publisher": "shahreyar",
   "license": "MIT",
   "engines": {
@@ -97,6 +97,11 @@
       {
         "command": "hoppy.importSettings",
         "title": "Hoppy: Import Settings"
+      },
+      {
+        "command": "hoppy.refreshUsage",
+        "title": "Hoppy: Refresh Usage",
+        "icon": "$(refresh)"
       }
     ],
     "keybindings": [
@@ -134,7 +139,9 @@
         "hoppy.projectAccounts": {
           "type": "object",
           "default": {},
-          "additionalProperties": { "type": "string" },
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "Projects pinned to a Claude account or Other AI: project folder to account folder. Set it from the Hoppy menu with Always use ... in this project."
         },
         "hoppy.onLimit": {
@@ -178,6 +185,35 @@
           "default": [],
           "description": "Extra Claude Code config folders to search for chats to hand off. ~/.claude and ~/.claude-account* are always searched."
         },
+        "hoppy.customProviders": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Your own OpenAI-compatible providers (added in Hoppy Settings > AI Providers). Keys are kept in the OS secret store, not here.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "baseUrl": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "hoppy.providerOptions": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Per-provider values that are not secret: Cloudflare account ID, address of a local server (Ollama, LM Studio)."
+        },
+        "hoppy.showCommunityProviders": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Show community gateways (Kilo, LLM7, Pollinations) in AI Providers. They are free, but prompts may be logged."
+        },
         "hoppy.fallbackModels": {
           "type": "array",
           "items": {
@@ -201,6 +237,11 @@
           "type": "string",
           "default": "openrouter/nvidia/nemotron-3.5-lightning:free",
           "description": "Model for background tasks (Haiku slot)."
+        },
+        "hoppy.claudeQuota": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show the exact 5-hour and weekly % used for each Claude account, read from Anthropic (the same numbers as Claude Code's /usage). Hoppy only reads the account's current login token; it never refreshes, changes or stores it. Off: Hoppy shows tokens from local chat files and an estimate."
         }
       }
     },
@@ -288,7 +329,26 @@
           }
         ]
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "hoppy.usageView",
+          "name": "Hoppy Usage",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "hoppy.refreshUsage",
+          "when": "view == hoppy.usageView",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -p .",

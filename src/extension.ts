@@ -10,9 +10,33 @@ import { modelContext, SettingsPanel } from './settings';
 import { installSkill } from './skill';
 import { colorFor, createAccountDir, currentDir, currentTarget, describe, isCurrent, applyProjectPin, isProjectPinned, listTargets, pinProject, sameDir, setLabel, setTarget, Target, unpinProject } from './targets';
 import { cachedUsage, formatTokens, initUsage, refreshUsage, usageLine } from './usage';
+import { learn, leftLabel, loadCaps, raiseIfPassed, saveCaps } from './caps';
+import { buildRows, openRouterQuota, Quota, quotaDetail, renderRows, rowLevel, statusUsageText, UsageRow, UsageViewProvider } from './usageView';
+import { cachedQuota, fetchQuota } from './quota';
 
 let statusItem: vscode.StatusBarItem;
+let usageItem: vscode.StatusBarItem;
 let radar: LimitRadar | undefined;
+let globalState: vscode.Memento | undefined;
+let usageView: UsageViewProvider | undefined;
+/** Last OpenRouter free-request count, refreshed in the background (the status bar never waits for it). */
+let lastQuota: Quota | undefined;
+let usageLogged = false;
+
+function usageRows(): UsageRow[] {
+    const exact = vscode.workspace.getConfiguration('hoppy').get<boolean>('claudeQuota', true);
+    return buildRows(listTargets(), currentDir(), (d) => (showUsage() ? cachedUsage(d) : undefined), limitOf, globalState ? loadCaps(globalState) : {}, exact ? cachedQuota : undefined);
+}
+
+/** Exact 5h/week % from Anthropic for each logged-in account (read-only token; cached 3 min inside). */
+async function updateClaudeQuotas(): Promise<void> {
+    if (!vscode.workspace.getConfiguration('hoppy').get<boolean>('claudeQuota', true)) {
+        return;
+    }
+    for (const t of listTargets().filter((x) => x.kind === 'claude' && x.loggedIn)) {
+        await fetchQuota(t.dir);
+    }
+}
 
 function limitOf(t: Target): LimitHit | undefined {
     return t.kind === 'claude' ? radar?.limitFor(t.dir) : undefined;
@@ -51,15 +75,59 @@ function sortedTargets(): Target[] {
     return all.map((t, i) => ({ t, i })).sort((a, b) => rank(a.t) - rank(b.t) || a.i - b.i).map((x) => x.t);
 }
 
+/** Hover table for the usage item: one row per window per account, with a text bar. */
+function usageTooltip(rows: UsageRow[]): vscode.MarkdownString {
+    const md = new vscode.MarkdownString(undefined, true);
+    md.isTrusted = { enabledCommands: ['hoppy.usageView.focus', 'hoppy.refreshUsage'] };
+    const bar = (left: number | undefined) => {
+        if (left === undefined) {
+            return '';
+        }
+        const used = Math.round((1 - left) * 10);
+        return `${'█'.repeat(used)}${'░'.repeat(10 - used)}`;
+    };
+    md.appendMarkdown('**Hoppy · Claude usage**\n\n| Account | Window | Used | | Resets |\n|---|---|--:|---|---|\n');
+    for (const r of rows.filter((x) => x.kind === 'claude')) {
+        const name = `${r.current ? '**▶ ' : ''}${r.label}${r.current ? '**' : ''}`;
+        const lines = quotaDetail(r) ? [['5 h', r.h5Left, r.h5Reset], ['week', r.weekLeft, r.weekReset]] : [];
+        if (!lines.length) {
+            md.appendMarkdown(`| ${name} | 5 h | ${r.h5 === undefined ? '–' : formatTokens(r.h5)} tokens | | ${r.limit ?? ''} |\n`);
+            continue;
+        }
+        lines.forEach(([w, left, reset], i) => {
+            const pct = left === undefined ? '–' : `${r.exact ? '' : '~'}${Math.round((1 - (left as number)) * 100)}%`;
+            const at = reset ? new Date(reset as number).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+            md.appendMarkdown(`| ${i ? '' : name} | ${w} | ${pct} | \`${bar(left as number | undefined)}\` | ${at} |\n`);
+        });
+    }
+    md.appendMarkdown('\n"~" = estimate from local chat files · [Open Hoppy Usage](command:hoppy.usageView.focus) · [Refresh](command:hoppy.refreshUsage)');
+    return md;
+}
+
 async function refreshStatus(): Promise<void> {
     const t = currentTarget();
     const gatewayUp = await isGatewayUp();
     const up = t.kind === 'other' ? gatewayUp : true;
     const limited = !!limitOf(t);
+    const rows = usageRows();
+    const currentRow = rows.find((r) => r.current);
     statusItem.text = t.kind === 'claude' ? `$(sparkle) Claude · ${t.label}${limited ? ' $(watch)' : ''}` : up ? '$(globe) Other AI' : '$(warning) Other AI (stopped)';
     statusItem.backgroundColor = up && !limited ? undefined : new vscode.ThemeColor('statusBarItem.warningBackground');
     // A warning background already carries its own foreground; a custom color would fight it.
     statusItem.color = t.kind === 'claude' && !limited ? colorFor(t.dir) : undefined;
+
+    // Separate compact usage item: "5h 5% · wk 85%". 80% used turns yellow, 95% or a limit turns red
+    // (VS Code status items only offer these two backgrounds).
+    const usageText = showUsage() && up ? statusUsageText(currentRow, lastQuota).replace(/^ · /, '') : '';
+    if (usageText) {
+        const level = t.kind === 'claude' ? rowLevel(currentRow) : 'ok';
+        usageItem.text = `$(dashboard) ${usageText}`;
+        usageItem.backgroundColor = level === 'critical' ? new vscode.ThemeColor('statusBarItem.errorBackground') : level === 'warn' ? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
+        usageItem.tooltip = usageTooltip(rows);
+        usageItem.show();
+    } else {
+        usageItem.hide();
+    }
 
     const tip = new vscode.MarkdownString(undefined, true);
     tip.isTrusted = { enabledCommands: ['hoppy.settings', 'hoppy.handoff', 'hoppy.gatewayRestart'] };
@@ -68,7 +136,9 @@ async function refreshStatus(): Promise<void> {
         const icon = x.kind === 'other' ? '$(globe)' : '$(sparkle)';
         const limit = limitOf(x);
         const detail = x.kind === 'other' ? (gatewayUp ? 'ready' : 'stopped') : limit ? `$(watch) ${resetLabel(limit)}` : x.email ?? (x.loggedIn ? '' : 'needs login');
-        const used = usageDetail(x);
+        const row = rows.find((r) => r.dir === x.dir);
+        const pctLine = row && quotaDetail(row);
+        const used = usageDetail(x) && `${usageDetail(x)}${pctLine ? `  \n　　$(dashboard) ${pctLine}` : ''}${x.kind === 'other' && lastQuota ? ` · OpenRouter free ${lastQuota.remaining}/${lastQuota.limit} left today` : ''}`;
         tip.appendMarkdown(`${isCurrent(x) ? '**▶**' : '　'} ${icon} ${isCurrent(x) ? `**${describe(x)}**` : describe(x)} ${detail ? `· ${detail}` : ''}${used ? `  \n　　${used}` : ''}\n\n`);
     }
     if (isProjectPinned()) {
@@ -80,6 +150,41 @@ async function refreshStatus(): Promise<void> {
     }
     statusItem.tooltip = tip;
     statusItem.show();
+    void usageView?.refresh();
+}
+
+/** At a limit, the tokens counted in that window become the account's learned cap (see caps.ts). */
+async function learnCapFromHit(hit: LimitHit): Promise<void> {
+    if (!globalState || hit.kind === 'other') {
+        return;
+    }
+    refreshUsage([{ dir: hit.dir, claudeOnly: true }], 0);
+    const u = cachedUsage(hit.dir);
+    if (!u) {
+        return;
+    }
+    const used = hit.kind === 'session' ? u.last5h.tokens : u.last7d.tokens;
+    await saveCaps(globalState, learn(loadCaps(globalState), hit.dir, hit.kind, used));
+    log(`learned ${hit.kind} cap for ${hit.dir}: ${formatTokens(used)} tokens`);
+}
+
+/** An account still answering past its learned cap: the cap was too low, raise it. */
+async function raisePassedCaps(): Promise<void> {
+    if (!globalState) {
+        return;
+    }
+    let store = loadCaps(globalState);
+    const before = JSON.stringify(store);
+    for (const t of listTargets().filter((x) => x.kind === 'claude' && !limitOf(x))) {
+        const u = cachedUsage(t.dir);
+        if (u) {
+            store = raiseIfPassed(store, t.dir, 'session', u.last5h.tokens);
+            store = raiseIfPassed(store, t.dir, 'weekly', u.last7d.tokens);
+        }
+    }
+    if (JSON.stringify(store) !== before) {
+        await saveCaps(globalState, store);
+    }
 }
 
 /**
@@ -431,7 +536,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await migrateModelHopSettings().catch(() => undefined);
     statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusItem.command = 'hoppy.menu';
-    context.subscriptions.push(statusItem);
+    // Just right of the account item: compact "5h 5% · wk 85%"; click opens the Hoppy Usage view.
+    usageItem = vscode.window.createStatusBarItem('hoppy.usage', vscode.StatusBarAlignment.Right, 99.9);
+    usageItem.name = 'Hoppy Usage';
+    usageItem.command = 'hoppy.usageView.focus';
+    context.subscriptions.push(statusItem, usageItem);
 
     const register = (id: string, fn: () => unknown) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
@@ -605,6 +714,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }),
     );
 
+    globalState = context.globalState;
+    usageView = new UsageViewProvider(async () => renderRows(usageRows(), lastQuota));
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider(UsageViewProvider.id, usageView));
+    register('hoppy.refreshUsage', async () => {
+        refreshAllUsage(0);
+        lastQuota = await openRouterQuota(context.extensionPath, 0);
+        for (const t of listTargets().filter((x) => x.kind === 'claude' && x.loggedIn)) {
+            await fetchQuota(t.dir, true);
+        }
+        await refreshStatus();
+    });
     radar = new LimitRadar(context.globalState);
     SettingsPanel.limitLabel = (dir) => {
         const hit = radar?.limitFor(dir);
@@ -612,7 +732,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     };
     context.subscriptions.push(
         radar,
-        radar.onHit((hit) => onLimitHit(context, hit)),
+        radar.onHit((hit) => learnCapFromHit(hit).catch(() => undefined).then(() => onLimitHit(context, hit))),
         radar.onDidChange(() => {
             // Remember every account seen at its limit, so its reset can be announced later.
             for (const t of listTargets().filter((x) => limitOf(x))) {
@@ -637,15 +757,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const updateUsage = (maxAgeMs: number) => {
         const step = () => {
             if (refreshAllUsage(maxAgeMs, 1)) {
-                refreshStatus();
+                if (!usageLogged) {
+                    usageLogged = true;
+                    log(`usage ready: ${usageRows().map((r) => `${r.label}${r.current ? ' (in use)' : ''} 5h ${r.h5 === undefined ? '-' : formatTokens(r.h5)}`).join(', ')}`);
+                }
+                void raisePassedCaps().then(() => refreshStatus());
                 SettingsPanel.refresh();
                 setTimeout(step, 1500);
             }
         };
         step();
     };
-    const firstScan = setTimeout(() => updateUsage(60000), 8000);
-    const usageTick = setInterval(() => updateUsage(4 * 60000), 5 * 60000);
+    // Cached 5 minutes inside, so this is at most one small request per 5 minutes.
+    const updateQuota = async () => {
+        lastQuota = await openRouterQuota(context.extensionPath);
+    };
+    const firstScan = setTimeout(() => (updateUsage(60000), void updateQuota().then(() => refreshStatus())), 8000);
+    // Every minute: the status bar shows live numbers while you work. After the first scan only new lines are read.
+    const usageTick = setInterval(() => (updateUsage(55000), void updateQuota(), void updateClaudeQuotas().then(() => refreshStatus())), 60000);
+    setTimeout(() => void updateClaudeQuotas().then(() => refreshStatus()), 3000);
     context.subscriptions.push({ dispose: () => (clearTimeout(firstScan), clearInterval(usageTick)) });
 
     // A pinned project opens on its account, and wins again whenever its window gets focus.

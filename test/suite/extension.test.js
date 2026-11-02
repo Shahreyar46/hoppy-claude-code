@@ -111,7 +111,8 @@ suite('Hoppy', () => {
         const state = sent.find((m) => m.type === 'state');
         assert.ok(state, 'state sent to page');
         console.log(`    page state: ${state.targets.length} targets, ${state.providers.filter((p) => p.enabled).length} providers on, ${state.catalog.length} models in catalog, fallback ${state.fallback.length}`);
-        assert.strictEqual(state.providers.length, 8, 'eight providers shown');
+        assert.strictEqual(state.providers.length, require(path.join(out, 'providers.js')).allProviders().length, 'every provider shown');
+        assert.ok(state.providers.length >= 25, 'built-in providers plus custom');
         assert.ok(state.catalog.length > 10, 'catalog loaded');
         assert.ok(state.catalog.every((m) => !m.selector.startsWith('openrouter/') || m.selector.split('/').length >= 3), 'selectors well formed');
         assert.ok(!JSON.stringify(state).match(/sk-or-v1-[A-Za-z0-9]{20}|AIza[A-Za-z0-9_-]{20}/), 'no full API key reaches the page');
@@ -459,6 +460,140 @@ suite('Hoppy', () => {
 
     test('limit setting is registered and on by default', () => {
         assert.strictEqual(vscode.workspace.getConfiguration('hoppy').get('suggestOnLimit'), true);
+    });
+
+    test('1.2 providers: registry is safe and complete', () => {
+        const pr = require(path.join(out, 'providers.js'));
+        const ids = pr.PROVIDERS.map((p) => p.id);
+        assert.strictEqual(new Set(ids).size, ids.length, 'ids are unique');
+        for (const id of ['cloudflare', 'huggingface', 'ollamacloud', 'ollama', 'lmstudio', 'openai', 'xai', 'together', 'fireworks', 'moonshot', 'qwen', 'cohere', 'reka', 'kilo', 'llm7', 'pollinations']) {
+            assert.ok(ids.includes(id), `${id} is offered`);
+        }
+        for (const p of pr.PROVIDERS) {
+            assert.match(p.id, /^[a-z0-9][a-z0-9-]{1,40}$/, 'ccr-safe name');
+            const base = p.base.replace('{account}', '0'.repeat(32));
+            assert.strictEqual(pr.checkBaseUrl(base), undefined, `${p.id} base allowed`);
+            assert.ok(!/anthropic|claude\.ai/i.test(base), 'never Anthropic');
+            if (p.group === 'community') {
+                assert.ok(/logged/i.test(p.warning || ''), `${p.id} warns that prompts may be logged`);
+            }
+        }
+        assert.ok(pr.checkBaseUrl('http://example.com/v1'), 'plain http only for this PC');
+        assert.strictEqual(pr.checkBaseUrl('http://127.0.0.1:11434/v1'), undefined);
+        assert.ok(pr.checkBaseUrl('https://api.anthropic.com/v1'), 'Anthropic refused');
+        assert.strictEqual(pr.customId('My Server!'), 'custom-my-server');
+        assert.strictEqual(pr.normalizeBase('https://x.io/v1/chat/completions/'), 'https://x.io/v1');
+        const cf = pr.PROVIDERS.find((p) => p.id === 'cloudflare');
+        assert.strictEqual(pr.resolveBase(cf, { account: 'bad' }), undefined, 'Cloudflare needs a real account id');
+        assert.strictEqual(pr.resolveBase(cf, { account: 'a'.repeat(32) }), `https://api.cloudflare.com/client/v4/accounts/${'a'.repeat(32)}/ai/v1`);
+        const gem = pr.PROVIDERS.find((p) => p.id === 'gemini');
+        assert.deepStrictEqual(pr.ccrTemplate(gem, gem.base), { api_base_url: 'https://generativelanguage.googleapis.com/v1beta/models/', transformer: { use: ['gemini'] } });
+        const groq = pr.PROVIDERS.find((p) => p.id === 'groq');
+        assert.deepStrictEqual(pr.ccrTemplate(groq, groq.base), { api_base_url: 'https://api.groq.com/openai/v1/chat/completions' });
+        const local = pr.toCustomInfo({ id: 'custom-x', label: 'X', baseUrl: 'http://localhost:8080/v1/' });
+        assert.strictEqual(local.group, 'local');
+        assert.strictEqual(local.base, 'http://localhost:8080/v1');
+    });
+
+    test('1.2 ccr helper refuses unsafe provider templates', async () => {
+        const url = require('url');
+        const helper = await import(url.pathToFileURL(path.resolve(__dirname, '..', '..', 'scripts', 'ccr-config.mjs')).href);
+        assert.deepStrictEqual(helper.validTemplate('xai', { api_base_url: 'https://api.x.ai/v1/chat/completions' }), { api_base_url: 'https://api.x.ai/v1/chat/completions', models: [] });
+        assert.ok(helper.validTemplate('ollama', { api_base_url: 'http://127.0.0.1:11434/v1/chat/completions' }));
+        assert.strictEqual(helper.validTemplate('evil', { api_base_url: 'http://example.com/v1' }), null);
+        assert.strictEqual(helper.validTemplate('x', { api_base_url: 'https://api.anthropic.com/v1/messages' }), null);
+        assert.strictEqual(helper.validTemplate('anthropic', { api_base_url: 'https://example.com/v1' }), null);
+        assert.strictEqual(helper.validTemplate('Bad Name', { api_base_url: 'https://example.com/v1' }), null);
+    });
+
+    test('1.2 catalog: parse, match, limits', () => {
+        const cat = require(path.join(out, 'catalog.js'));
+        const ext = vscode.extensions.all.find((e) => e.id.toLowerCase().endsWith('hoppy-claude-code'));
+        const real = cat.loadCatalog(ext.extensionPath);
+        assert.ok(real.models.length > 50, 'catalog ships with models');
+        assert.ok(real.updated, 'catalog is dated');
+        for (const m of real.models) {
+            assert.ok(m.provider && m.id && m.label, 'every entry has provider, id, label');
+        }
+        const c = cat.parseCatalog({ updated: 'x', models: [{ provider: 'groq', id: 'm1', free: true, rpm: 30, rpd: 1000, tier: 'pro', rank: 3 }, { bad: 1 }, { provider: 'p', id: 'q', rpm: -1 }] });
+        assert.strictEqual(c.models.length, 2, 'invalid rows dropped');
+        assert.strictEqual(c.models[1].rpm, undefined, 'negative limit ignored');
+        assert.strictEqual(cat.findEntry(c, 'groq/m1').label, 'm1');
+        assert.strictEqual(cat.findEntry(c, 'groq/m1:free').id, 'm1', 'suffix-insensitive match');
+        assert.strictEqual(cat.findEntry(c, 'other/m1'), undefined);
+        assert.strictEqual(cat.limitLabel(c.models[0]), '30 rpm · 1K rpd');
+    });
+
+    test('1.2 usage widget: learned caps and status text', () => {
+        const caps = require(path.join(out, 'caps.js'));
+        const uv = require(path.join(out, 'usageView.js'));
+        let store = {};
+        store = caps.learn(store, 'C:\\U\\.claude', 'session', 1000);
+        assert.deepStrictEqual(store, {}, 'a tiny window teaches nothing');
+        store = caps.learn(store, 'C:\\U\\.claude', 'session', 4000000, 1);
+        const cap = caps.capFor(store, 'c:\\u\\.claude\\', 'session');
+        assert.strictEqual(cap.tokens, 4000000, 'folder match ignores case and trailing slash');
+        assert.strictEqual(caps.leftLabel(caps.fractionLeft(2400000, cap)), '~40% left');
+        assert.strictEqual(caps.leftLabel(caps.fractionLeft(9e9, cap)), '~0% left');
+        assert.strictEqual(caps.leftLabel(caps.fractionLeft(1, undefined)), undefined, 'no cap, no made-up number');
+        assert.strictEqual(caps.raiseIfPassed(store, 'C:\\U\\.claude', 'session', 5000000).ccr, undefined);
+        assert.strictEqual(caps.capFor(caps.raiseIfPassed(store, 'C:\\U\\.claude', 'session', 5000000), 'C:\\U\\.claude', 'session').tokens, 5000000, 'working past the cap raises it');
+        assert.strictEqual(caps.raiseIfPassed(store, 'C:\\U\\.claude', 'weekly', 9e9), store, 'unknown window untouched');
+
+        const usage = (dir) => ({ last5h: { tokens: dir.includes('router') ? 0 : 2400000, replies: 1 }, today: { tokens: 3000000, replies: 1 }, last7d: { tokens: 50000000, replies: 9 }, models: [], scannedAt: 0 });
+        const targets = [
+            { kind: 'claude', dir: 'C:\\U\\.claude', label: 'Work', loggedIn: true },
+            { kind: 'claude', dir: 'C:\\U\\.claude-2', label: 'Me <b>', loggedIn: true },
+            { kind: 'other', dir: 'C:\\U\\.claude-router', label: 'Other AI', loggedIn: true },
+        ];
+        const limitOf = (t) => (t.label === 'Me <b>' ? { kind: 'session', text: '', hitAt: 0, dir: t.dir, sessionFile: '' } : undefined);
+        const rows = uv.buildRows(targets, 'c:\\u\\.claude', usage, limitOf, store);
+        assert.strictEqual(rows[0].current, true);
+        assert.strictEqual(uv.statusUsageText(rows[0]), ' · 5h ~60%', 'estimate marked with ~');
+        assert.strictEqual(rows[1].h5Left, undefined, 'no cap learned for this account');
+        assert.strictEqual(uv.statusUsageText(rows[1]), ' · limit reached');
+        assert.strictEqual(uv.statusUsageText(rows[2], { remaining: 37, limit: 50 }), ' · OpenRouter free 37/50');
+        const html = uv.renderRows(rows, { remaining: 37, limit: 50 });
+        assert.ok(html.includes('Me &lt;b&gt;') && !html.includes('Me <b>'), 'labels escaped');
+        assert.ok(html.includes('37/50'));
+
+        // Exact numbers from Anthropic win over the estimate; colors at 80% and 95%.
+        const quota = require(path.join(out, 'quota.js'));
+        const q = quota.parseQuota({ five_hour: { utilization: 5, resets_at: '2026-11-03T02:20:00Z' }, seven_day: { utilization: 85.4, resets_at: null } });
+        assert.strictEqual(q.h5.used, 5);
+        assert.strictEqual(q.week.resetsAt, undefined);
+        assert.strictEqual(quota.parseQuota({ error: 'x' }), undefined, 'unknown body means no data');
+        assert.strictEqual(quota.level(q), 'warn');
+        assert.strictEqual(quota.level({ h5: { used: 96 } }), 'critical');
+        const exact = uv.buildRows(targets, 'c:\\u\\.claude', usage, () => undefined, store, (d) => (d === 'C:\\U\\.claude' ? q : undefined));
+        assert.strictEqual(exact[0].exact, true);
+        assert.strictEqual(uv.statusUsageText(exact[0]), ' · 5h 5% · wk 85%', 'same shape as Claude Code /usage');
+        assert.strictEqual(uv.rowLevel(exact[0]), 'warn', '85% week turns yellow');
+        assert.strictEqual(uv.rowLevel({ h5Left: 0.04 }), 'critical', '96% turns red');
+        assert.strictEqual(uv.rowLevel({ h5Left: 0.5 }), 'ok');
+        assert.ok(uv.quotaDetail(exact[0]).startsWith('5 h 5% used'));
+        assert.ok(uv.quotaDetail(rows[0]).endsWith('(estimate)'));
+        const fs2 = require('fs');
+        const dir = fs2.mkdtempSync(path.join(os.tmpdir(), 'hoppy-cred-'));
+        fs2.writeFileSync(path.join(dir, '.credentials.json'), JSON.stringify({ claudeAiOauth: { accessToken: 't', expiresAt: Date.now() - 1000 } }));
+        assert.strictEqual(quota.readToken(dir), undefined, 'expired token is not used (and never refreshed)');
+        fs2.writeFileSync(path.join(dir, '.credentials.json'), JSON.stringify({ claudeAiOauth: { accessToken: 't', expiresAt: Date.now() + 3600e3 } }));
+        assert.strictEqual(quota.readToken(dir), 't');
+        fs2.rmSync(dir, { recursive: true, force: true });
+    });
+
+    test('1.2 model lists: every common response shape', () => {
+        const setup = require(path.join(out, 'setup.js'));
+        const ids = (x) => setup.parseModelList(x).map((m) => m.id);
+        assert.deepStrictEqual(ids({ data: [{ id: 'b' }, { id: 'a' }, { id: 'whisper-1' }] }), ['a', 'b'], 'OpenAI shape, speech dropped');
+        assert.deepStrictEqual(ids([{ id: 'x', type: 'chat' }, { id: 'y', type: 'embedding' }]), ['x'], 'Together shape');
+        assert.deepStrictEqual(ids({ models: ['m'] }), ['m'], 'bare strings');
+        assert.deepStrictEqual(ids(null), []);
+        assert.deepStrictEqual(ids({ data: [{ id: 'anthropic/claude-opus-4-8' }, { id: '~anthropic/claude-sonnet-latest' }, { id: 'claude-haiku-4-5' }, { id: 'ok' }] }), ['ok'], 'Claude never offered as Other AI');
+        assert.deepStrictEqual(ids([{ id: 'v', output_modalities: ['video'] }, { id: 'i', category: 'image' }, { id: 'bge-m3' }, { id: 't', output_modalities: ['text'] }]), ['t'], 'image, video, embeddings dropped');
+        assert.deepStrictEqual(ids([{ id: 'a', capabilities: ['reasoning'] }, { id: 'b', capabilities: ['tool_calling'] }]), ['b'], 'Pollinations: tools required');
+        assert.deepStrictEqual(ids([{ id: 'a', providers: [{ supports_tools: false }] }, { id: 'b', providers: [{ supports_tools: true, context_length: 9 }] }]), ['b'], 'HF router: tools required');
+        assert.strictEqual(setup.parseModelList([{ id: 'b', providers: [{ supports_tools: true, context_length: 9 }] }])[0].ctx, 9);
     });
 
     suiteTeardown(async () => {

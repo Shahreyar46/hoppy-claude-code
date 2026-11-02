@@ -295,6 +295,7 @@ button.add:hover {
 }
 
 input[type='password'],
+input[type='text'],
 input[type='search'],
 select {
     font: inherit;
@@ -1172,4 +1173,20 @@ main.is-busy .toggle {
 
 .editrow code {
     font-size: 0.95em;
+}
+
+/* 1.2: provider warnings, community toggle */
+.warn-text {
+    color: var(--mh-warn);
+    margin: 4px 0 0;
+}
+.check.small {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    margin: 0 0 8px;
+}
+.keyform + .keyrow,
+.keyform .keyrow + .keyrow {
+    margin-top: 6px;
 }

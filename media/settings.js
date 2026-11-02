@@ -31,7 +31,19 @@
         ['models', 'Models'],
         ['fallback', 'Backups'],
     ];
-    const MONO = { openrouter: 'OR', gemini: 'G', deepseek: 'DS', glm: 'Z', groq: 'GQ', cerebras: 'CB', mistral: 'M', nvidia: 'NV' };
+    const MONO = {
+        openrouter: 'OR', gemini: 'G', deepseek: 'DS', glm: 'Z', groq: 'GQ', cerebras: 'CB', mistral: 'M', nvidia: 'NV',
+        cloudflare: 'CF', huggingface: 'HF', ollamacloud: 'OC', ovh: 'OV', ollama: 'OL', lmstudio: 'LM', openai: 'OA',
+        xai: 'X', together: 'TG', fireworks: 'FW', moonshot: 'K', qwen: 'QW', siliconflow: 'SF', cohere: 'CO', reka: 'RK',
+        kilo: 'KI', llm7: 'L7', pollinations: 'PO',
+    };
+    const GROUPS = [
+        ['free', 'Free tiers', ''],
+        ['local', 'On this PC', 'Models you run yourself. Nothing leaves your PC.'],
+        ['paid', 'Paid', 'Billed by the provider per token. The Free only filter in Models hides these.'],
+        ['trial', 'Trial keys', ''],
+        ['community', 'Community gateways', 'Free, but run by third parties: prompts may be logged or used for training. Never picked by the Smart profile.'],
+    ];
     const svg = (d, size = 16) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
     const ICON = {
         check: svg('<path d="M20 6 9 17l-5-5"/>'),
@@ -48,7 +60,7 @@
         book: svg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V21h16"/>', 14),
     };
     // Actions that change config; ignored while a save is running so saves cannot collide.
-    const MUTATING = new Set(['save-key', 'save-models', 'save-fallback', 'toggle', 'switch', 'add-account', 'setup', 'check-models', 'toggle-on']);
+    const MUTATING = new Set(['save-key', 'save-models', 'save-fallback', 'toggle', 'switch', 'add-account', 'setup', 'check-models', 'toggle-on', 'add-custom', 'remove-custom']);
     let busy = false;
 
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -215,16 +227,27 @@
     /** One provider's key form: shown for a provider being connected, or when "Change key" is clicked. */
     function keyForm(p) {
         const result = keyResults[p.id];
+        const extra =
+            p.needs === 'account'
+                ? `<div class="keyrow"><label class="sr-only" for="acct-${p.id}">Account ID</label>
+                    <input type="text" id="acct-${p.id}" placeholder="Account ID (32 characters)" value="${esc(p.options?.account || '')}" autocomplete="off" spellcheck="false"></div>`
+                : p.needs === 'url'
+                  ? `<div class="keyrow"><label class="sr-only" for="base-${p.id}">Server address</label>
+                    <input type="text" id="base-${p.id}" placeholder="${esc(p.defaultBase || '')}" value="${esc(p.options?.base || p.defaultBase || '')}" autocomplete="off" spellcheck="false" title="Server address"></div>`
+                  : '';
+        const keyLabel = p.keyOptional ? 'Key (optional)' : p.enabled ? 'Paste the new key' : 'Paste API key';
         return `
             <div class="keyform">
+                ${p.warning ? `<div class="callout warn small" role="note">${esc(p.warning)}</div>` : ''}
                 <ol class="steps small">
-                    <li><button class="link" data-act="url" data-url="${esc(p.keyUrl)}">Get a ${esc(p.label)} key ${ICON.external}</button></li>
-                    <li>Paste it here</li>
+                    ${p.custom ? '<li>Paste its key, or leave it empty</li>' : `<li><button class="link" data-act="url" data-url="${esc(p.keyUrl)}">${p.group === 'local' ? `Get ${esc(p.label)}` : `Get a ${esc(p.label)} key`} ${ICON.external}</button></li>`}
+                    <li>${p.needs === 'account' ? 'Paste account ID and token' : p.keyOptional ? 'Paste a key if you have one' : 'Paste it here'}</li>
                     <li>Hoppy checks it, then saves</li>
                 </ol>
+                ${extra}
                 <div class="keyrow">
                     <label class="sr-only" for="key-${p.id}">${esc(p.label)} API key</label>
-                    <input type="password" id="key-${p.id}" placeholder="${p.enabled ? 'Paste the new key' : 'Paste API key'}" autocomplete="off" spellcheck="false">
+                    <input type="password" id="key-${p.id}" placeholder="${keyLabel}" autocomplete="off" spellcheck="false">
                     <button data-act="save-key" data-provider="${p.id}">Test &amp; save</button>
                     <button class="ghost" data-act="close-key" aria-label="Cancel">Cancel</button>
                 </div>
@@ -246,9 +269,9 @@
                     <div class="mono-tile" aria-hidden="true">${MONO[p.id] || esc(initials(p.label))}</div>
                     <div class="grow">
                         <h3>${esc(p.label)} ${healthOk(p.id)}</h3>
-                        <div class="muted small"><span class="mono">key ••••${esc(p.keyHint || '')}</span> · ${p.models.length} model${p.models.length === 1 ? '' : 's'} on · <button class="link" data-act="goto" data-tab="models">choose models</button></div>
+                        <div class="muted small"><span class="mono">${p.keyHint ? `key ••••${esc(p.keyHint)}` : 'no key'}</span> · ${p.models.length} model${p.models.length === 1 ? '' : 's'} on · <button class="link" data-act="goto" data-tab="models">choose models</button>${p.group === 'community' ? ` · ${chip('prompts may be logged', 'warn')}` : ''}${p.group === 'paid' ? ` · ${chip('paid', '')}` : ''}</div>
                     </div>
-                    <button class="ghost" data-act="open-key" data-provider="${p.id}">Change key</button>
+                    <button class="ghost" data-act="open-key" data-provider="${p.id}">${p.needs || p.keyOptional ? 'Edit' : 'Change key'}</button>
                     <label class="toggle" title="Turn off (the key is kept)">
                         <input type="checkbox" role="switch" aria-checked="true" aria-label="${esc(p.label)} on or off" data-act="toggle" data-provider="${p.id}" checked>
                         <span class="track" aria-hidden="true"><span class="thumb"></span></span>
@@ -267,16 +290,48 @@
                     ${p.savedKey
                         ? `<button class="ghost" data-act="toggle-on" data-provider="${p.id}" title="Your key is kept from before">Turn on</button>`
                         : openKey === p.id ? '' : `<button class="ghost" data-act="open-key" data-provider="${p.id}">Connect</button>`}
+                    ${p.custom ? `<button class="ghost icon" data-act="remove-custom" data-provider="${p.id}" title="Remove this custom provider" aria-label="Remove ${esc(p.label)}">${ICON.x}</button>` : ''}
                 </div>
                 <p class="muted small note">${esc(p.note)}</p>
+                ${p.warning && openKey !== p.id ? `<p class="small warn-text">${esc(p.warning)}</p>` : ''}
                 ${openKey === p.id ? keyForm(p) : ''}
             </article>`;
+        const groupSection = ([g, title, hint]) => {
+            const items = available.filter((p) => (p.custom ? 'custom' : p.group) === g);
+            if (g === 'community' && !state.showCommunity) {
+                return `<h2 class="section">${title}</h2>
+                    <label class="check small"><input type="checkbox" id="show-community"> Show community gateways (free, but prompts may be logged)</label>`;
+            }
+            if (!items.length) {
+                return '';
+            }
+            return `<h2 class="section">${title} <span class="count">${items.length}</span></h2>
+                ${hint ? `<p class="fineprint">${esc(hint)}</p>` : ''}
+                ${g === 'community' ? '<label class="check small"><input type="checkbox" id="show-community" checked> Show community gateways</label>' : ''}
+                <div class="grid">${items.map(tile).join('')}</div>`;
+        };
+        const customs = available.filter((p) => p.custom);
+        const customResult = keyResults.__custom;
         return `
             <p class="lead">Connect the AI services you want. Hoppy checks each key before saving it, and keys never leave this PC.</p>
             ${connected.length
                 ? `<h2 class="section">Connected <span class="count">${connected.length}</span></h2>${connected.map(row).join('')}`
                 : '<div class="callout"><div><strong>Start with OpenRouter.</strong><div class="muted">One free key unlocks 15+ free models. Add Gemini too: it has its own daily limit.</div></div></div>'}
-            ${available.length ? `<h2 class="section">${connected.length ? 'Add another' : 'Choose a service'}</h2><div class="grid">${available.map(tile).join('')}</div>` : ''}`;
+            ${GROUPS.map(groupSection).join('')}
+            <h2 class="section">Custom</h2>
+            ${customs.length ? `<div class="grid">${customs.map(tile).join('')}</div>` : ''}
+            <article class="card ptile">
+                <h3>Add any OpenAI-compatible provider</h3>
+                <p class="muted small note">Name and address (ends in /v1). Its models are read from the address's /models list.</p>
+                <div class="keyrow">
+                    <label class="sr-only" for="custom-label">Name</label>
+                    <input type="text" id="custom-label" placeholder="Name, e.g. My server" autocomplete="off" spellcheck="false">
+                    <label class="sr-only" for="custom-url">Address</label>
+                    <input type="text" id="custom-url" placeholder="https://api.example.com/v1" autocomplete="off" spellcheck="false">
+                    <button class="ghost" data-act="add-custom">Add</button>
+                </div>
+                ${customResult ? `<div class="result ${customResult.ok ? 'ok' : 'err'}" role="status">${customResult.ok ? ICON.check : ICON.x} ${esc(customResult.message)}</div>` : ''}
+            </article>`;
     }
 
     /** Green dot when any model of this provider passed the last check. */
@@ -313,7 +368,9 @@
                         <code class="path">${esc(m.selector)}</code>
                     </span>
                     <span class="model-meta">
+                        ${m.tools === false ? chip('no tools', 'warn', 'The catalog says this model does not call tools; Claude Code needs them') : ''}
                         ${m.vision ? chip('reads images', 'info', 'Can read screenshots in your chats') : ''}
+                        ${m.limits ? chip(m.limits, '', `Free-tier limit, estimate from the built-in catalog (${state.catalogUpdated || 'undated'})`) : ''}
                         ${chip(fmtCtx(m.ctx), '', 'Context window')}
                         ${chip(fmtPrice(m), m.free ? 'ok' : '', m.free ? 'No cost' : 'Price per 1M tokens, input / output')}
                     </span>
@@ -527,16 +584,23 @@
                 return vscode.postMessage({ type: 'toggleProvider', provider: el.dataset.provider, enabled: true });
             case 'save-key': {
                 const p = el.dataset.provider;
+                const info = state.providers.find((x) => x.id === p);
                 const input = document.getElementById(`key-${p}`);
-                if (!input.value.trim()) {
+                if (!input.value.trim() && !info?.keyOptional) {
                     input.focus();
                     return;
                 }
-                const hasModels = state.providers.find((x) => x.id === p)?.models.length > 0;
-                vscode.postMessage({ type: 'saveKey', provider: p, key: input.value, hasModels });
+                const hasModels = info?.models.length > 0;
+                const account = document.getElementById(`acct-${p}`)?.value;
+                const base = document.getElementById(`base-${p}`)?.value;
+                vscode.postMessage({ type: 'saveKey', provider: p, key: input.value, hasModels, account, base });
                 input.value = '';
                 return;
             }
+            case 'add-custom':
+                return vscode.postMessage({ type: 'addCustom', label: document.getElementById('custom-label').value, baseUrl: document.getElementById('custom-url').value });
+            case 'remove-custom':
+                return vscode.postMessage({ type: 'removeCustom', provider: el.dataset.provider });
             case 'refresh-catalog':
                 return vscode.postMessage({ type: 'refreshCatalog' });
             case 'save-models':
@@ -617,6 +681,8 @@
         } else if (el.id === 'free-only') {
             freeOnly = el.checked;
             render();
+        } else if (el.id === 'show-community') {
+            vscode.postMessage({ type: 'showCommunity', value: el.checked });
         } else if (el.id === 'enabled-only') {
             enabledOnly = el.checked;
             render();

@@ -50,9 +50,9 @@ export function statusFromHttp(code: number, body: string): HealthStatus {
     return 'error';
 }
 
-export async function checkModel(selector: string, key: string): Promise<HealthResult> {
+export async function checkModel(selector: string, key: string, chatUrl?: string): Promise<HealthResult> {
     const { provider, model } = splitSelector(selector);
-    const url = CHAT_URL[provider];
+    const url = chatUrl || CHAT_URL[provider];
     const started = Date.now();
     const done = (status: HealthStatus, note?: string): HealthResult => ({ selector, status, ms: Date.now() - started, note, checkedAt: Date.now() });
     if (!url) {
@@ -64,7 +64,7 @@ export async function checkModel(selector: string, key: string): Promise<HealthR
         const r = await fetch(url, {
             method: 'POST',
             signal: controller.signal,
-            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+            headers: { ...(key && key !== 'hoppy-no-key' ? { Authorization: `Bearer ${key}` } : {}), 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 model,
                 max_tokens: 512,
@@ -97,13 +97,19 @@ export async function checkModel(selector: string, key: string): Promise<HealthR
 }
 
 /** Runs checks a few at a time, so free tiers are not hit with a burst. */
-export async function checkModels(selectors: string[], keyFor: (provider: string) => Promise<string | undefined>, parallel = 3): Promise<HealthResult[]> {
+export async function checkModels(
+    selectors: string[],
+    keyFor: (provider: string) => Promise<string | undefined>,
+    parallel = 3,
+    urlFor: (provider: string) => string | undefined = () => undefined,
+): Promise<HealthResult[]> {
     const results: HealthResult[] = [];
     const queue = [...new Set(selectors)];
     const worker = async () => {
         for (let s = queue.shift(); s; s = queue.shift()) {
-            const key = await keyFor(splitSelector(s).provider);
-            results.push(key ? await checkModel(s, key) : { selector: s, status: 'key', ms: 0, note: 'No key saved for this provider', checkedAt: Date.now() });
+            const provider = splitSelector(s).provider;
+            const key = await keyFor(provider);
+            results.push(key ? await checkModel(s, key, urlFor(provider)) : { selector: s, status: 'key', ms: 0, note: 'No key saved for this provider', checkedAt: Date.now() });
         }
     };
     await Promise.all(Array.from({ length: Math.min(parallel, queue.length) }, worker));

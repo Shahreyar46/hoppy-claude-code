@@ -11,6 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { existsSync, readFileSync, writeFileSync, copyFileSync, unlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { randomBytes } from 'node:crypto';
 
 const CCR_DIR = join(process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'), 'claude-code-router');
@@ -58,6 +59,31 @@ const PROVIDER_TEMPLATES = {
 
 // Providers that would bill Claude per token. Never kept in the router.
 const FORBIDDEN_PROVIDERS = new Set(['anthropic', 'claude']);
+
+// Provider names Hoppy may write: built-in ids and custom-<slug>.
+const NAME_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
+
+/**
+ * A provider template sent by the extension (registry in src/providers.ts). Only https URLs, or plain http
+ * to this PC (Ollama, LM Studio). Anthropic endpoints are refused: Claude never goes through the router.
+ */
+export function validTemplate(name, t) {
+  if (!NAME_RE.test(name) || FORBIDDEN_PROVIDERS.has(name) || !t || typeof t.api_base_url !== 'string') {
+    return null;
+  }
+  let url;
+  try {
+    url = new URL(t.api_base_url);
+  } catch {
+    return null;
+  }
+  const local = url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]';
+  if (!(url.protocol === 'https:' || (url.protocol === 'http:' && local)) || /(^|\.)anthropic\.com$|(^|\.)claude\.ai$/i.test(url.hostname)) {
+    return null;
+  }
+  const use = Array.isArray(t.transformer?.use) ? t.transformer.use.filter((x) => typeof x === 'string') : [];
+  return { api_base_url: url.toString(), ...(use.length ? { transformer: { use } } : {}), models: [] };
+}
 
 function out(obj) {
   process.stdout.write(JSON.stringify(obj));
@@ -151,8 +177,13 @@ function applyConfig() {
     return true;
   });
 
+  const templates = opts.templates && typeof opts.templates === 'object' ? opts.templates : {};
   for (const [name, key] of Object.entries(opts.keys || {})) {
-    if (!key || !PROVIDER_TEMPLATES[name]) {
+    const template = templates[name] ? validTemplate(name, templates[name]) : PROVIDER_TEMPLATES[name];
+    if (!key || !template) {
+      if (key && templates[name]) {
+        changes.push(`skipped ${name}: address not allowed`);
+      }
       continue;
     }
     let provider = cfg.Providers.find((p) => p.name === name);
@@ -160,10 +191,18 @@ function applyConfig() {
       provider = {
         id: `provider-${name}-${randomBytes(5).toString('hex')}`,
         name,
-        ...structuredClone(PROVIDER_TEMPLATES[name]),
+        ...structuredClone(template),
       };
       cfg.Providers.push(provider);
       changes.push(`added provider ${name}`);
+    } else if (templates[name]) {
+      // Address can change (custom provider edited, Cloudflare account id, local port).
+      provider.api_base_url = template.api_base_url;
+      if (template.transformer) {
+        provider.transformer = template.transformer;
+      } else {
+        delete provider.transformer;
+      }
     }
     provider.api_key = key.trim();
     changes.push(`set key for ${name}`);
@@ -273,8 +312,10 @@ function exportKey(name) {
   out({ ok: !!p && !isPlaceholder(p.api_key), key: p && !isPlaceholder(p.api_key) ? p.api_key : null });
 }
 
-const command = process.argv[2];
-try {
+// Run only as a script, so tests can import validTemplate.
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const command = isMain ? process.argv[2] : null;
+if (isMain) try {
   if (command === 'status') {
     status();
   } else if (command === 'export-key') {

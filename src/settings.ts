@@ -1,7 +1,9 @@
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { ccrStatus, isGatewayUp, runHelper } from './gateway';
-import { applyToCcr, checkKey, defaultModels, listProviderModels, PROVIDERS, ProviderInfo } from './setup';
+import { applyToCcr, checkKey, CLAUDE_MODEL, defaultModels, listProviderModels, modelsUrlFor } from './setup';
+import { allProviders, baseFor, checkBaseUrl, customId, customProviders, findProvider, NO_KEY, normalizeBase, PROVIDERS, providerOptions, ProviderInfo, setProviderOptions } from './providers';
+import { findEntry, limitLabel, loadCatalog, Tier } from './catalog';
 import { ACCOUNT_COLORS, colorFor, currentTarget, describe, listTargets, setColor } from './targets';
 import { cachedUsage, formatTokens, modelLabel } from './usage';
 import { checkModels, HealthResult } from './health';
@@ -15,6 +17,11 @@ export interface CatalogModel {
     priceOut?: number;
     ctx?: number;
     vision: boolean;
+    /** From the built-in catalog, when it knows the model. */
+    tools?: boolean;
+    limits?: string;
+    rpd?: number;
+    tier?: Tier;
 }
 
 /** Models offered for providers that are not OpenRouter (their APIs have no public catalog). */
@@ -33,7 +40,7 @@ const providerCache = new Map<string, { at: number; models: CatalogModel[]; fail
 
 /** Live models of an OpenAI-compatible provider, read with the key saved in secret storage. */
 async function providerCatalog(info: ProviderInfo, key: string | undefined): Promise<CatalogModel[]> {
-    if (!info.modelsUrl || !key) {
+    if (!modelsUrlFor(info) || !key) {
         return [];
     }
     const hit = providerCache.get(info.id);
@@ -52,7 +59,7 @@ async function providerCatalog(info: ProviderInfo, key: string | undefined): Pro
         selector: `${info.id}/${m.id}`,
         provider: info.id,
         name: m.id,
-        free: false,
+        free: info.group === 'free' || info.group === 'local' || info.group === 'community',
         ctx: m.ctx,
         vision: /vl|vision|pixtral|llama-4/i.test(m.id),
     }));
@@ -68,7 +75,7 @@ async function openRouterCatalog(): Promise<CatalogModel[]> {
     const r = await fetch('https://openrouter.ai/api/v1/models');
     const data: any[] = ((await r.json()) as any).data;
     openRouterCache = data
-        .filter((m) => (m.supported_parameters || []).includes('tools'))
+        .filter((m) => (m.supported_parameters || []).includes('tools') && !CLAUDE_MODEL.test(m.id))
         .map((m) => {
             const pin = Number(m.pricing?.prompt ?? 0) * 1e6;
             const pout = Number(m.pricing?.completion ?? 0) * 1e6;
@@ -97,6 +104,40 @@ export async function modelContext(selector: string): Promise<number | undefined
     } catch {
         return undefined;
     }
+}
+
+/**
+ * Adds what the built-in catalog knows (free, tools, vision, limits, tier) to a model. The catalog wins for
+ * "free" because a provider's free tier often covers only some of its models (GLM Flash).
+ */
+export function enrich(m: CatalogModel, extensionPath: string): CatalogModel {
+    const e = findEntry(loadCatalog(extensionPath), m.selector);
+    if (!e) {
+        return m;
+    }
+    return {
+        ...m,
+        name: m.name === m.selector.split('/').slice(1).join('/') ? e.label : m.name,
+        free: m.provider === 'openrouter' ? m.free : e.free,
+        ctx: m.ctx ?? e.context,
+        vision: m.vision || !!e.vision,
+        tools: e.tools,
+        limits: limitLabel(e),
+        rpd: e.rpd,
+        tier: e.tier,
+    };
+}
+
+/** Catalog models for providers without a usable model list (Cloudflare, GLM, Gemini, DeepSeek). */
+function builtInModels(extensionPath: string): CatalogModel[] {
+    const listed = new Set(STATIC_MODELS.map((m) => m.selector));
+    const extra = loadCatalog(extensionPath)
+        .models.filter((e) => {
+            const p = PROVIDERS.find((x) => x.id === e.provider);
+            return p && !modelsUrlFor(p) && p.id !== 'openrouter' && !listed.has(`${e.provider}/${e.id}`);
+        })
+        .map<CatalogModel>((e) => ({ selector: `${e.provider}/${e.id}`, provider: e.provider, name: e.label, free: e.free, ctx: e.context, vision: !!e.vision }));
+    return [...STATIC_MODELS, ...extra];
 }
 
 export class SettingsPanel {
@@ -172,31 +213,38 @@ export class SettingsPanel {
         const cfg = vscode.workspace.getConfiguration('hoppy');
         const status = await ccrStatus(this.context.extensionPath);
         const providerState = await Promise.all(
-            PROVIDERS.map(async (p: ProviderInfo) => {
+            allProviders().map(async (p: ProviderInfo) => {
                 const live = status.providers?.find((x) => x.name === p.id);
                 return {
                     id: p.id,
                     label: p.label,
+                    group: p.group,
                     note: p.note,
                     tags: p.tags,
                     keyUrl: p.keyUrl,
+                    warning: p.warning ?? null,
+                    needs: p.needs ?? null,
+                    keyOptional: !!p.keyOptional,
+                    custom: !!p.custom,
+                    options: providerOptions(p.id),
+                    defaultBase: p.needs === 'url' ? p.base : null,
                     enabled: !!live?.hasKey,
-                    keyHint: live?.keyHint ?? null,
+                    keyHint: live?.keyHint === NO_KEY.slice(-4) ? null : live?.keyHint ?? null,
                     savedKey: !!(await this.context.secrets.get(secretKey(p.id))),
                     models: live?.models ?? [],
                 };
             }),
         );
-        let catalog: CatalogModel[] = STATIC_MODELS;
+        let catalog: CatalogModel[] = builtInModels(this.context.extensionPath);
         let catalogError: string | undefined;
         try {
-            catalog = [...(await openRouterCatalog()), ...STATIC_MODELS];
+            catalog = [...(await openRouterCatalog()), ...catalog];
         } catch (err) {
             catalogError = `Could not load the OpenRouter catalog (${String(err)}). Showing enabled models only.`;
         }
         for (const p of providerState.filter((x) => x.enabled)) {
-            const info = PROVIDERS.find((x) => x.id === p.id);
-            if (!info?.modelsUrl) {
+            const info = findProvider(p.id);
+            if (!info || !modelsUrlFor(info)) {
                 continue;
             }
             try {
@@ -238,7 +286,9 @@ export class SettingsPanel {
                 };
             }),
             providers: providerState,
-            catalog: catalog.filter((c) => providerState.some((p) => p.id === c.provider && p.enabled)),
+            catalog: catalog.filter((c) => providerState.some((p) => p.id === c.provider && p.enabled)).map((c) => enrich(c, this.context.extensionPath)),
+            catalogUpdated: loadCatalog(this.context.extensionPath).updated,
+            showCommunity: cfg.get<boolean>('showCommunityProviders', false),
             mainModel: cfg.get<string>('mainModel'),
             smallModel: cfg.get<string>('smallModel'),
             fallback: cfg.get<string[]>('fallbackModels') || [],
@@ -266,7 +316,7 @@ export class SettingsPanel {
         }
     }
 
-    private async save(options: object, doneText: string): Promise<void> {
+    private async save(options: { keys?: Record<string, string>; [k: string]: unknown }, doneText: string): Promise<void> {
         this.toast('busy', 'Saving… Other AI restarts for a few seconds.');
         const result = await applyToCcr(this.context, options);
         this.toast(result.ok ? 'info' : 'error', result.ok ? doneText : result.lines.join(' · '));
@@ -303,18 +353,29 @@ export class SettingsPanel {
                 await vscode.commands.executeCommand('hoppy.guide');
                 return;
             case 'saveKey': {
-                const key = String(m.key || '').trim();
-                const info = PROVIDERS.find((p) => p.id === m.provider);
-                if (!info || !key) {
+                const info = findProvider(String(m.provider));
+                const typed = String(m.key || '').trim();
+                if (!info || (!typed && !info.keyOptional)) {
                     return;
                 }
-                const formatError = info.looksValid(key);
-                if (formatError) {
-                    this.post({ type: 'keyResult', provider: m.provider, ok: false, message: formatError });
+                const key = typed || NO_KEY;
+                const options = {
+                    account: typeof m.account === 'string' ? m.account.trim() : undefined,
+                    base: typeof m.base === 'string' && m.base.trim() ? normalizeBase(m.base) : undefined,
+                };
+                const problem =
+                    (typed ? info.looksValid(typed) : undefined) ||
+                    (options.base ? checkBaseUrl(options.base) : undefined) ||
+                    (info.needs === 'account' && !/^[a-f0-9]{32}$/i.test(options.account || '') ? 'The account ID has 32 letters and digits (Cloudflare dashboard, Workers AI page)' : undefined);
+                if (problem) {
+                    this.post({ type: 'keyResult', provider: m.provider, ok: false, message: problem });
                     return;
                 }
-                this.toast('busy', `Checking ${info.label} key…`);
-                const check = await checkKey(info.id, key);
+                if (info.needs) {
+                    await setProviderOptions(info.id, options);
+                }
+                this.toast('busy', `Checking ${info.label}…`);
+                const check = await checkKey(info.id, key, baseFor(info));
                 this.post({ type: 'keyResult', provider: m.provider, ok: check.ok, message: check.message });
                 if (!check.ok) {
                     this.toast('error', check.message);
@@ -324,18 +385,53 @@ export class SettingsPanel {
                 let extra: object = {};
                 if (info.id === 'openrouter' && !m.hasModels) {
                     extra = { freeModels: (await openRouterCatalog()).filter((c) => c.selector.endsWith(':free')).map((c) => c.selector.slice('openrouter/'.length)) };
-                } else if (info.modelsUrl && !m.hasModels) {
+                } else if (modelsUrlFor(info) && !m.hasModels) {
                     providerCache.delete(info.id);
                     try {
                         extra = { providerModels: { [info.id]: defaultModels(await listProviderModels(info, key)) } };
                     } catch {
                         // The key check passed; models can still be picked in the Models tab.
                     }
+                } else if (!m.hasModels) {
+                    const builtIn = builtInModels(this.context.extensionPath).filter((c) => c.provider === info.id).map((c) => c.selector.slice(info.id.length + 1));
+                    if (builtIn.length) {
+                        extra = { providerModels: { [info.id]: defaultModels(builtIn.map((id) => ({ id }))) } };
+                    }
                 }
                 return this.save({ keys: { [info.id]: key }, ...extra }, `${info.label} key saved. ${check.message}`);
             }
+            case 'addCustom': {
+                const label = String(m.label || '').trim().slice(0, 40);
+                const base = normalizeBase(String(m.baseUrl || ''));
+                const error = !label ? 'Give it a name' : checkBaseUrl(base);
+                const id = customId(label);
+                if (error || PROVIDERS.some((p) => p.id === id)) {
+                    this.post({ type: 'keyResult', provider: '__custom', ok: false, message: error || 'That name is taken by a built-in provider' });
+                    return;
+                }
+                const list = customProviders().filter((c) => c.id !== id);
+                list.push({ id, label, baseUrl: base });
+                await vscode.workspace.getConfiguration('hoppy').update('customProviders', list, vscode.ConfigurationTarget.Global);
+                this.post({ type: 'keyResult', provider: '__custom', ok: true, message: `${label} added. Paste its key (or leave it empty if it needs none), then Test & save.` });
+                await this.sendState();
+                this.post({ type: 'focusKey', provider: id });
+                return;
+            }
+            case 'removeCustom': {
+                const id = String(m.provider);
+                if (!customProviders().some((c) => c.id === id)) {
+                    return;
+                }
+                await this.context.secrets.delete(secretKey(id));
+                await vscode.workspace.getConfiguration('hoppy').update('customProviders', customProviders().filter((c) => c.id !== id), vscode.ConfigurationTarget.Global);
+                const live = (await ccrStatus(this.context.extensionPath)).providers?.some((p) => p.name === id);
+                return live ? this.save({ removeProviders: [id] }, 'Custom provider removed.') : this.sendState();
+            }
+            case 'showCommunity':
+                await vscode.workspace.getConfiguration('hoppy').update('showCommunityProviders', !!m.value, vscode.ConfigurationTarget.Global);
+                return this.sendState();
             case 'toggleProvider': {
-                const info = PROVIDERS.find((p) => p.id === m.provider);
+                const info = findProvider(String(m.provider));
                 if (!info) {
                     return;
                 }
@@ -360,7 +456,7 @@ export class SettingsPanel {
                     return;
                 }
                 let models = this.context.globalState.get<string[]>(modelsKey);
-                if (!models?.length && info.modelsUrl) {
+                if (!models?.length && modelsUrlFor(info)) {
                     models = defaultModels(await listProviderModels(info, key).catch(() => []));
                 }
                 if (!models?.length && info.id === 'openrouter') {
@@ -377,7 +473,7 @@ export class SettingsPanel {
                     const [provider, ...rest] = selector.split('/');
                     (providerModels[provider] ||= []).push(rest.join('/'));
                 }
-                for (const p of PROVIDERS) {
+                for (const p of allProviders()) {
                     providerModels[p.id] ||= [];
                 }
                 return this.save({ providerModels }, 'Models saved. Reload the Claude panel in Other AI mode to see them.');
@@ -392,7 +488,7 @@ export class SettingsPanel {
                 }
                 this.toast('busy', `Checking ${selectors.length} model(s)… one tiny request each.`);
                 const keyFor = async (provider: string) => {
-                    if (!PROVIDERS.some((p) => p.id === provider)) {
+                    if (!findProvider(provider)) {
                         return undefined;
                     }
                     const saved = await this.context.secrets.get(secretKey(provider));
@@ -402,7 +498,12 @@ export class SettingsPanel {
                     const exported = await runHelper(this.context.extensionPath, `export-key ${provider}`);
                     return exported?.key as string | undefined;
                 };
-                for (const r of await checkModels(selectors, keyFor)) {
+                const urlFor = (provider: string) => {
+                    const p = findProvider(provider);
+                    const base = p && baseFor(p);
+                    return base ? `${base}/chat/completions` : undefined;
+                };
+                for (const r of await checkModels(selectors, keyFor, 3, urlFor)) {
                     this.health[r.selector] = r;
                 }
                 const bad = selectors.filter((x) => this.health[x]?.status !== 'ok').length;
