@@ -773,7 +773,7 @@ suite('Hoppy', () => {
         }
         assert.ok(fs.existsSync(path.join(ext().extensionPath, 'CHANGELOG.md')));
         assert.ok(pkg.keywords.length <= 30, 'Marketplace allows at most 30 keywords');
-        assert.ok(pkg.description.includes('Not affiliated with Anthropic'));
+        assert.ok(pkg.description.includes('Not affiliated with or endorsed by Anthropic'));
     });
 
     test('rating request: only after real use, never twice, respects Later and never', () => {
@@ -790,7 +790,8 @@ suite('Hoppy', () => {
         assert.strictEqual(LATER_DAYS, 14);
         assert.ok(!shouldAsk({}, now), 'no first-seen date');
         const pkg = ext().packageJSON;
-        assert.ok(pkg.displayName.startsWith('Claude Usage Tracker') && pkg.displayName.endsWith('- Hoppy'));
+        assert.ok(pkg.displayName.startsWith('Hoppy - ') && pkg.displayName.endsWith('for Claude Code'), 'brand first, Claude only as compatibility');
+        assert.ok(!pkg.keywords.includes('anthropic') && pkg.description.includes('Not affiliated with or endorsed by Anthropic'), 'no implied affiliation');
         assert.ok(pkg.keywords.includes('claude limit') && pkg.keywords.length <= 30);
     });
 
