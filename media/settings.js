@@ -178,6 +178,7 @@
     function editRow(t) {
         return `<div class="editrow">
             <button class="link" data-act="rename" data-dir="${esc(t.dir)}">Rename…</button>
+            ${/[\\/]\.claude$/i.test(t.dir) ? '' : `<button class="link danger" data-act="removeAccount" data-dir="${esc(t.dir)}">Remove account…</button>`}
             ${colorRow(t)}
             <span class="muted small" title="${esc(t.dir)}">Folder: <code>${esc(t.dir)}</code></span>
         </div>`;
@@ -563,6 +564,8 @@
                 return vscode.postMessage({ type: 'setColor', dir: el.dataset.dir, color: el.dataset.color });
             case 'rename':
                 return vscode.postMessage({ type: 'renameAccount', dir: el.dataset.dir });
+            case 'removeAccount':
+                return vscode.postMessage({ type: 'removeAccount', dir: el.dataset.dir });
             case 'add-account':
                 return vscode.postMessage({ type: 'addAccount' });
             case 'setup':

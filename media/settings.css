@@ -278,6 +278,11 @@ button.link:hover {
     text-decoration: underline;
 }
 
+button.link.danger,
+button.link.danger:hover {
+    color: var(--vscode-errorForeground);
+}
+
 button.add {
     width: 100%;
     margin: 2px 0 6px;

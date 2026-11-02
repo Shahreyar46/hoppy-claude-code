@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.2.1
+
+- **New name**: Hoppy - Claude Usage Tracker, Multi-Account Switcher, Voice to Text & Free AI Models, so it is clear what Hoppy does. The extension ID is unchanged, so updates and settings carry over.
+- Clearer description and Marketplace page: feature overview and a FAQ (usage limits, multiple accounts, keeping chat context, continuing on free AI models, voice in any language).
+
+## 1.2.0
+
+**See your limits, talk to Claude.**
+
+- **Usage in the status bar**: exact 5-hour and weekly % for the current Claude account (same numbers as `/usage`, read-only from Anthropic). Yellow at 80%, red at 95%; background and font color settings.
+- **Usage hover and Hoppy Usage view**: every account as a card with bars, reset times, tokens and email; Other AI with the top models used this week; **Switch** links.
+- **Voice to text**: **Voice** button and `Ctrl+Alt+Shift+V`. No key needed for English, Hindi and 18 more languages (Claude Code dictation). Bangla and translation via Gemini or Groq with your own key. Text goes into the Claude chat box without sending.
+- **Translate while you speak**: choose the language to write in (15 languages).
+- **Remove an account**: with a confirmation that shows the folder, size and chats; the folder goes to the Recycle Bin and Hoppy forgets its name, color, pins and limits.
+- **26 providers** and a **Custom** OpenAI-compatible endpoint; Kilo, LLM7 and Pollinations behind a "community" switch.
+- **Model catalog**: ranked models with free limits; Claude models never offered as Other AI.
+- **What's new** page: Hoppy menu → More → What's new.
+- Status bar hovers no longer blink while open.
+
 ## 1.1.1
 
 - **Video guides**: the getting started guide now opens with a short "Watch how it works" step, and **More → Video guides** opens the 2-minute overview or the full tutorial on YouTube.

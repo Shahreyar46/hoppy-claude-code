@@ -1,8 +1,8 @@
 {
   "name": "hoppy-claude-code",
-  "displayName": "Hoppy for Claude Code",
-  "description": "Out of tokens? Hoppy hops. Switch between your Claude accounts and other AI models (free or paid: OpenRouter, Gemini, DeepSeek, GLM) in Claude Code, keep your chat context, and continue any chat on another account or model. Not affiliated with Anthropic.",
-  "version": "1.2.0",
+  "displayName": "Hoppy - Claude Usage Tracker, Multi-Account Switcher, Voice to Text & Free AI Models",
+  "description": "See your Claude Code usage limits (exact 5-hour and weekly %) live in the status bar. Keep multiple Claude accounts logged in and switch in one click without losing your chat context. Hit a limit? Continue the same chat on another account or on free AI models (Gemini, DeepSeek, OpenRouter, Groq and 20 more). Voice to text in any language, including Bangla, with automatic translation. Not affiliated with Anthropic.",
+  "version": "1.2.1",
   "publisher": "shahreyar",
   "license": "MIT",
   "engines": {
@@ -102,12 +102,45 @@
         "command": "hoppy.refreshUsage",
         "title": "Hoppy: Refresh Usage",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "hoppy.voiceToggle",
+        "title": "Hoppy: Voice to Text (start / stop)",
+        "icon": "$(mic)"
+      },
+      {
+        "command": "hoppy.voiceCancel",
+        "title": "Hoppy: Cancel Voice Recording"
+      },
+      {
+        "command": "hoppy.voiceLanguage",
+        "title": "Hoppy: Voice Output Language"
+      },
+      {
+        "command": "hoppy.voiceCopyLast",
+        "title": "Hoppy: Copy Last Voice Text"
+      },
+      {
+        "command": "hoppy.voiceSpokenLanguage",
+        "title": "Hoppy: Voice Spoken Language"
+      },
+      {
+        "command": "hoppy.removeAccount",
+        "title": "Hoppy: Remove a Claude Account"
+      },
+      {
+        "command": "hoppy.whatsNew",
+        "title": "Hoppy: What's New"
       }
     ],
     "keybindings": [
       {
         "command": "hoppy.flip",
         "key": "ctrl+alt+h"
+      },
+      {
+        "command": "hoppy.voiceToggle",
+        "key": "ctrl+alt+shift+v"
       }
     ],
     "configuration": {
@@ -263,6 +296,148 @@
           ],
           "default": "auto",
           "markdownDescription": "Background of the usage item in the status bar. VS Code lets extensions use only yellow or red here. To change what that yellow looks like, set `statusBarItem.warningBackground` in `workbench.colorCustomizations` (affects every extension)."
+        },
+        "hoppy.voice.show": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show the **Voice** button in the status bar. Click it, speak, click again: the text goes into the Claude chat input, not sent. Shortcut: `Ctrl+Alt+Shift+V`."
+        },
+        "hoppy.voice.engine": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "claude",
+            "gemini",
+            "groq",
+            "openai"
+          ],
+          "enumDescriptions": [
+            "Claude Code dictation (no key) for English, Hindi and 18 more; Gemini (or Groq) for Bangla, translation and Other AI",
+            "Always Claude Code dictation: no key, 20 languages (not Bangla), Claude accounts only",
+            "Gemini Flash-Lite listens to the audio: best Bangla in tests (names like রাজশাহী, ঢাকা right). Free key; on the free tier Google may use data to improve products",
+            "Groq Whisper large v3: fastest, free key, no training on your data; weaker Bangla spelling",
+            "OpenAI gpt-4o-mini-transcribe: paid key"
+          ],
+          "default": "auto",
+          "scope": "machine",
+          "markdownDescription": "Which service turns speech into text. **Auto**: no setup for English, Hindi and 18 more languages (Claude Code dictation). Bangla and translation use Gemini if you have a Gemini key (most accurate in tests), else Groq. Audio is sent only when you stop a recording."
+        },
+        "hoppy.voice.spokenLanguage": {
+          "type": "string",
+          "default": "auto",
+          "markdownDescription": "The language you speak. **Any language** detects it each time and handles Bangla mixed with English words best. Quick change: hover the Voice button → I speak.",
+          "enum": [
+            "auto",
+            "bn",
+            "en",
+            "hi",
+            "ur",
+            "ar",
+            "es",
+            "fr",
+            "de",
+            "pt",
+            "ru",
+            "tr",
+            "id",
+            "zh",
+            "ja",
+            "ko"
+          ],
+          "enumItemLabels": [
+            "Any language (detect)",
+            "Bangla",
+            "English",
+            "Hindi",
+            "Urdu",
+            "Arabic",
+            "Spanish",
+            "French",
+            "German",
+            "Portuguese",
+            "Russian",
+            "Turkish",
+            "Indonesian",
+            "Chinese",
+            "Japanese",
+            "Korean"
+          ]
+        },
+        "hoppy.voice.outputLanguage": {
+          "type": "string",
+          "default": "same",
+          "markdownDescription": "Language of the written text. **Same as spoken** writes what you said; any other choice translates (e.g. speak Bangla, get English). Quick change: hover the Voice button → Write in.",
+          "enum": [
+            "same",
+            "Bangla",
+            "English",
+            "Hindi",
+            "Urdu",
+            "Arabic",
+            "Spanish",
+            "French",
+            "German",
+            "Portuguese",
+            "Russian",
+            "Turkish",
+            "Indonesian",
+            "Chinese",
+            "Japanese",
+            "Korean"
+          ],
+          "enumItemLabels": [
+            "Same as spoken",
+            "Bangla",
+            "English",
+            "Hindi",
+            "Urdu",
+            "Arabic",
+            "Spanish",
+            "French",
+            "German",
+            "Portuguese",
+            "Russian",
+            "Turkish",
+            "Indonesian",
+            "Chinese",
+            "Japanese",
+            "Korean"
+          ]
+        },
+        "hoppy.voice.insertInto": {
+          "type": "string",
+          "enum": [
+            "claude",
+            "cursor",
+            "clipboard"
+          ],
+          "enumDescriptions": [
+            "Claude chat input (not sent; you review and press Enter)",
+            "Wherever your cursor is (editor, terminal with Claude CLI, any input)",
+            "Only copy; you paste"
+          ],
+          "default": "claude",
+          "markdownDescription": "Where the voice text goes."
+        },
+        "hoppy.voice.cleanUp": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Groq/OpenAI only: after speech-to-text, ask a model to fix spelling. Off by default: in tests it sometimes changed or dropped words. Gemini needs no clean-up."
+        },
+        "hoppy.voice.words": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "default": [],
+          "maxItems": 50,
+          "markdownDescription": "Your own words Voice should always spell right: names, project and tech words, Bangla words it gets wrong (e.g. `Hoppy`, `শুদ্ধ`, `ড্যাশবোর্ড`). Sent as a spelling hint with each recording. Up to 50."
+        },
+        "hoppy.voice.debug": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Keep the last recording and its raw and final text on this PC (Hoppy's storage folder, path shown in Output → Hoppy) to check accuracy. Overwritten each time; off by default."
         }
       }
     },
@@ -278,7 +453,7 @@
             "description": "New to Hoppy? See it in action first. The overview takes 2 minutes; the tutorial shows every feature step by step.\n[Watch the overview (2 min)](https://youtu.be/zhqcQeih3do)\n[Watch the full tutorial (4 min)](https://youtu.be/Sl9I1QzJ-zs)",
             "media": {
               "image": "media/walkthrough/videos.jpg",
-              "altText": "Hoppy for Claude Code video: switch Claude accounts and AI models in one click."
+              "altText": "Hoppy video: switch Claude accounts and AI models in one click."
             },
             "completionEvents": [
               "onLink:https://youtu.be/zhqcQeih3do",
@@ -333,6 +508,30 @@
             },
             "completionEvents": [
               "onCommand:hoppy.handoff",
+              "onStepSelected"
+            ]
+          },
+          {
+            "id": "usage",
+            "title": "See your Claude usage at a glance",
+            "description": "The status bar shows how much of your 5-hour and weekly Claude limit is used, the same numbers as /usage. Hover for every account; click for the side view.\n[Open Hoppy Usage](command:hoppy.usageView.focus)",
+            "media": {
+              "markdown": "media/walkthrough/usage.md"
+            },
+            "completionEvents": [
+              "onCommand:hoppy.usageView.focus",
+              "onStepSelected"
+            ]
+          },
+          {
+            "id": "voice",
+            "title": "Talk to Claude with Voice",
+            "description": "Click Voice in the status bar, speak, click again: the text lands in the Claude chat box. English and 19 more languages need nothing; Bangla and translation use your Gemini or Groq key.\n[Try Voice](command:hoppy.voiceToggle)\n[Pick output language](command:hoppy.voiceLanguage)",
+            "media": {
+              "markdown": "media/walkthrough/voice.md"
+            },
+            "completionEvents": [
+              "onCommand:hoppy.voiceToggle",
               "onStepSelected"
             ]
           },
@@ -397,15 +596,29 @@
     "claude",
     "claude code",
     "anthropic",
-    "ai",
+    "claude usage",
+    "usage limit",
+    "rate limit",
+    "5 hour limit",
+    "weekly limit",
+    "token usage",
     "multiple accounts",
+    "multi account",
     "account switcher",
+    "claude accounts",
+    "voice to text",
+    "speech to text",
+    "dictation",
+    "bangla",
+    "bengali",
     "openrouter",
     "gemini",
     "deepseek",
+    "groq",
     "glm",
     "llm",
-    "usage limit",
+    "free models",
+    "ai",
     "chat history"
   ],
   "pricing": "Free",

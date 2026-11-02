@@ -1,17 +1,44 @@
-# Hoppy for Claude Code
+# Hoppy - Claude Usage Tracker, Multi-Account Switcher, Voice to Text & Free AI Models
+
+**Hoppy is a free VS Code extension for Claude Code that shows your Claude usage limits live in the status bar, keeps multiple Claude accounts logged in and switches between them in one click without losing your chat, continues the same chat on another account or on free AI models when you hit a limit, and adds voice to text in any language with automatic translation.**
 
 > **Windows only** for now (Windows 10/11). Not affiliated with or endorsed by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic; Hoppy is an independent extension that works with them.
 
-Use **all your Claude accounts** and **other AI models** (free OpenRouter models, Gemini, DeepSeek, GLM, MiMo…) in the Claude Code panel of VS Code, without paying for Claude twice and without touching a terminal.
+## Features
 
-- **One click** in the status bar switches the Claude panel between your Claude accounts (for example Work and Personal) and other AI models.
-- **Shared chat history**: after switching, `/resume` shows this project's chats from every account, so you continue exactly where you stopped.
-- **Hit a limit mid-task?** Pick the chat and continue it on another account or another model.
-- **Guided setup** for API keys, with live checks.
-- **Automatic fallback**: if a model is busy, out of quota, or can't read screenshots, the next one takes over.
-- **`/second-opinion` skill**: ask other models from inside a normal Claude chat.
+### Claude usage tracker: 5-hour and weekly limits, always visible
+See exactly how much of your Claude Code limit is used, right in the status bar: `5h 2% · wk 60%`. The same numbers as `/usage`, for every account, with reset times and tokens. Yellow at 80%, red at 95%, so a limit never surprises you.
+
+### Multiple Claude accounts, all logged in, one click to switch
+Add your Work and Personal Claude accounts once. Each stays logged in. One click in the status bar switches the Claude Code panel between them. No logging out, no terminal.
+
+### Switch without losing context
+Your chat history comes with you. After switching, `/resume` shows this project's chats from every account, so you continue the **same chat** exactly where you stopped.
+
+### Hit the Claude limit? Keep working
+When an account hits its 5-hour or weekly limit, Hoppy offers to continue the same chat on your other Claude account, or on **free AI models** (Gemini, DeepSeek, OpenRouter free models and more), in one click. When the limit resets, Hoppy tells you.
+
+### Voice to text in any language, with translation
+Click **Voice**, speak, click again: the text lands in the Claude chat box. Speak in your own language (English, Bangla, Hindi, Spanish and many more) and Hoppy can write it in another language automatically, for example speak Bangla and get English.
+
+### 26 AI providers and free models
+OpenRouter, Gemini, DeepSeek, GLM, Groq, Cerebras, Mistral, NVIDIA, Hugging Face, Ollama, LM Studio, OpenAI, xAI and more, or your own OpenAI-compatible endpoint. Models are ranked by coding strength, with automatic fallback when one is busy.
+
+Also: guided API key setup with live checks, a `/second-opinion` skill to ask other models from inside a Claude chat, and one account per project.
 
 Your Claude login is never routed through anything. Claude models always come from your own plan.
+
+## What's new in 1.2
+
+| Feature | What you get |
+|---|---|
+| **Usage in the status bar** | `5h 2% · wk 60%` next to your account, exact numbers from Anthropic (read-only). Turns yellow at 80% and red at 95%. Hover for every account: bars, reset times, tokens, emails and your Other AI models |
+| **Hoppy Usage view** | Explorer side panel with the same cards, a **Switch** link per account and the top models you used this week |
+| **Voice to text** | **Voice** button in the status bar (`Ctrl+Alt+Shift+V`). English, Hindi and 18 more languages need no key (Claude Code's own dictation). Bangla and translation use Gemini or Groq with your key |
+| **Translate while you speak** | Speak Bangla, get English (or any of 15 languages). Hover **Voice** → **Write in** |
+| **Remove an account** | Settings → Accounts → **Edit** → **Remove account…**. Asks first, shows size and chats, moves the folder to the Recycle Bin |
+| **26 providers** | Groq, Cerebras, Mistral, NVIDIA, Hugging Face, Ollama, LM Studio, DeepSeek, OpenAI, xAI, Together, Fireworks, Kimi, Qwen and more, plus a **Custom** endpoint |
+| **Model catalog** | Models ranked by coding strength and speed, with free limits and "no tools" badges |
 
 ## Videos
 
@@ -22,6 +49,29 @@ Your Claude login is never routed through anything. Claude models always come fr
 
 Inside VS Code: Hoppy menu → **More** → **Video guides**.
 
+## FAQ
+
+**How do I see my Claude Code usage limit in VS Code?**
+Install Hoppy. The status bar shows `5h x% · wk y%`: how much of your 5-hour and weekly Claude limit is used, the same numbers as Claude Code's `/usage`. Hover it for every account and reset times.
+
+**Can I use multiple Claude accounts in VS Code?**
+Yes. Hoppy keeps each Claude account logged in in its own folder and switches the Claude Code panel between them in one click. Use only accounts you own (for example Work and Personal).
+
+**Do I lose my chat when I switch Claude accounts?**
+No. Hoppy copies the project's chats so `/resume` shows them on every account, and you continue the same conversation with its context.
+
+**What can I do when Claude Code hits the usage limit?**
+Hoppy notices the limit and offers to continue the same chat on another Claude account or on free AI models such as Gemini, DeepSeek or OpenRouter free models. It tells you when your limit resets.
+
+**Can I use Claude Code with free AI models?**
+Yes. Connect a free key (OpenRouter, Gemini, Groq and others) and switch the Claude Code panel to **Other AI**. Hoppy runs a local gateway so Claude Code works with those models.
+
+**Can I talk to Claude Code with my voice in Bangla or another language?**
+Yes. Click **Voice** in the status bar and speak. English, Hindi and 18 more languages work with no setup; Bangla and other languages use your Gemini or Groq key. Choose **Write in** to translate automatically, for example Bangla to English.
+
+**Is Hoppy free? Is it official?**
+Hoppy is free. It is an independent extension, not made by Anthropic. Your Claude login is never sent anywhere else, and API keys stay on your PC.
+
 ## Requirements
 
 - Windows 10/11
@@ -31,7 +81,7 @@ Inside VS Code: Hoppy menu → **More** → **Video guides**.
 
 ## Install
 
-1. VS Code: open **Extensions** (Ctrl+Shift+X) and search **Hoppy for Claude Code**.
+1. VS Code: open **Extensions** (Ctrl+Shift+X) and search **Hoppy** (or **Claude Usage Tracker**).
 2. Click **Install** (and **Trust Publisher & Install** if VS Code asks).
 3. The getting started guide opens, and **Claude · <account>** appears in the status bar.
 
@@ -58,7 +108,7 @@ Status bar → **Settings** opens a page with four tabs:
 | Tab | What you do there |
 |---|---|
 | **Accounts** | Every Claude account with its email and tokens used (last 5 hours, today, this week). Switch, add, or **Edit** to rename and pick a status bar color |
-| **AI Providers** | Connected services on top; **Connect** another below (OpenRouter, Gemini, DeepSeek, GLM, Groq, Cerebras, Mistral, NVIDIA NIM). Paste a key and Hoppy checks it before saving |
+| **AI Providers** | Connected services on top; **Connect** another below (26 services: OpenRouter, Gemini, DeepSeek, GLM, Groq, Cerebras, Mistral, NVIDIA NIM and more, or your own **Custom** endpoint). Paste a key and Hoppy checks it before saving |
 | **Models** | Tick which models are available, search, show free or all, see price, size and which models read images. Pick the main and helper model |
 | **Backups** | Models tried automatically when the main one is busy or out of free requests. **Check models** sends one tiny request to each and shows which work right now; **Put working first** reorders them |
 
@@ -90,7 +140,21 @@ Hoppy menu → **More** → **Export settings** writes your model choices, backu
 
 ## Usage
 
-The Hoppy menu and the Accounts tab show tokens each account used in the last 5 hours, today and this week, counted from the local chat files (chats Hoppy copied from another account are not counted twice). Anthropic does not publish exact plan limits, so this is a guide, not a percentage. Turn it off with `hoppy.showUsage`.
+- **Status bar**: `5h 2% · wk 60%` shows how much of the current account's 5-hour and weekly Claude limit is used. These are the exact numbers Claude Code's `/usage` shows: Hoppy reads them from Anthropic with the account's existing login (read-only; it never refreshes, changes or stores the login). Turn this off with `hoppy.claudeQuota` to use local estimates instead.
+- **Colors**: yellow box from 80% used, red from 95% (`hoppy.usageBackground`), font color with `hoppy.usageColor`.
+- **Hover** the usage item for every account: 5-hour and weekly bars, reset times, tokens used, emails, and your Other AI models with their tokens.
+- **Hoppy Usage view** (Explorer side bar): the same cards, plus **Switch** links and the top models used this week.
+- Tokens are counted from local chat files (copied chats are not counted twice). Anthropic publishes % only, so token totals marked `~` are estimates.
+
+## Voice to text
+
+Click **Voice** in the status bar (or `Ctrl+Alt+Shift+V`), speak, click again. The text goes into the Claude chat box, not sent, so you can check it and press Enter.
+
+- **No setup** for English, Hindi, Spanish and 17 more languages: Hoppy uses Claude Code's own dictation on your Claude login.
+- **Bangla and other languages**: Gemini (most accurate in our tests, it uses the meaning of the sentence) or Groq Whisper, with the key you already saved in Hoppy. Bangladesh place names are recognized.
+- **Translate**: hover **Voice** → **Write in** → for example **English**: speak Bangla, get English.
+- **Settings** (`hoppy.voice.*`): engine, spoken language, output language, where the text goes (Claude box, cursor or clipboard), your own word list.
+- Audio leaves your PC only when you stop a recording, and only to the engine shown. On Gemini's free tier Google may use what you send to improve its products; Hoppy asks once before using it. Windows only for Hoppy's own recorder; nothing to install.
 
 ## Claude accounts
 
@@ -99,6 +163,7 @@ Hoppy finds your Claude accounts by itself: `~/.claude` and every `~/.claude-acc
 - **Add one**: status bar → **Add Claude account** → give it a name. A new Claude tab opens and asks you to log in to that account.
 - **Rename**: status bar → **Rename an account** (e.g. "Work (Max)", "Personal").
 - **Switch**: click the status bar → pick the account. A new Claude tab opens on it right away; tabs already open keep their account until closed (or choose **Reload all tabs**).
+- **Remove**: Settings → Accounts → **Edit** → **Remove account…** (or Hoppy menu → **Remove an account**). Hoppy shows the folder, its size and chats, and asks first. The folder (login, chats, settings) goes to the Recycle Bin, so you can restore it. Main (`~/.claude`) can't be removed.
 
 Use only accounts you own (for example one for work and one personal). Using several accounts to get around usage limits can break Anthropic's terms.
 
@@ -156,6 +221,14 @@ Use only accounts you own (for example one for work and one personal). Using sev
 | `hoppy.accountColors` | `{}` | Status bar color per account (set in Settings → Accounts → Edit) |
 | `hoppy.onLimit` | `ask` | On a limit: `ask`, `nextAccount` or `otherAi` |
 | `hoppy.projectAccounts` | `{}` | Projects pinned to an account (set from the Hoppy menu) |
+| `hoppy.claudeQuota` | `true` | Exact 5-hour and weekly % from Anthropic (read-only) |
+| `hoppy.usageBackground` | `auto` | Usage item box: `auto` (yellow 80%, red 95%), `yellow`, `red` |
+| `hoppy.usageColor` | `auto` | Usage item font color, or any hex color |
+| `hoppy.voice.engine` | `auto` | `auto`, `claude`, `gemini`, `groq`, `openai` |
+| `hoppy.voice.spokenLanguage` | `auto` | The language you speak, or detect it |
+| `hoppy.voice.outputLanguage` | `same` | Write as spoken, or translate into a language |
+| `hoppy.voice.insertInto` | `claude` | Claude chat box, wherever your cursor is, or clipboard |
+| `hoppy.voice.words` | `[]` | Your own words Voice should always spell right |
 
 After changing models or the backups list in settings.json, run **Refresh model list** to apply them.
 
@@ -181,7 +254,7 @@ After changing models or the backups list in settings.json, run **Refresh model 
 
 ## Privacy
 
-Code you send in Other AI mode goes to the provider you picked (OpenRouter and the model host, Google, DeepSeek, Z.ai, Groq, Cerebras, Mistral or NVIDIA). **Check models** sends one short test message to each model you check, with your key. Limit detection and usage numbers are read from local files only. Check their data policies before using them on client or company code. Never send secrets.
+Code you send in Other AI mode goes to the provider you picked (OpenRouter and the model host, Google, DeepSeek, Z.ai, Groq, Cerebras, Mistral or NVIDIA). **Check models** sends one short test message to each model you check, with your key. Limit detection and token counts are read from local files only. The exact usage % is read from Anthropic's usage endpoint with the account's own login (turn off with `hoppy.claudeQuota`). Voice recordings go only to the engine you use (Claude Code dictation, Gemini, Groq or OpenAI) and only when you stop recording. Check their data policies before using them on client or company code. Never send secrets.
 
 ## Build from source
 

@@ -346,6 +346,12 @@ export class SettingsPanel {
             case 'renameAccount':
                 await vscode.commands.executeCommand('hoppy.renameAccount', m.dir);
                 return this.sendState();
+            case 'removeAccount':
+                // The command re-checks the folder and asks for confirmation; the webview only names it.
+                if (listTargets().some((t) => t.kind === 'claude' && t.dir === m.dir)) {
+                    await vscode.commands.executeCommand('hoppy.removeAccount', m.dir);
+                }
+                return this.sendState();
             case 'runSetup':
                 await vscode.commands.executeCommand('hoppy.setup');
                 return this.sendState();

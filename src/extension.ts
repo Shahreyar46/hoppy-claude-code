@@ -1,9 +1,12 @@
+import * as path from 'path';
+import * as os from 'os';
 import * as vscode from 'vscode';
 import { belongsToOpenProject, Chat, chatFromFile, chatTokens, forkChat, pickChat, summarizeChat, syncChatsInto } from './chats';
 import { ccrStatus, isCcrInstalled, isGatewayUp, startGateway, stopGateway } from './gateway';
 import { LimitHit, LimitRadar, resetLabel } from './limits';
 import { log } from './log';
-import { claudeConfigDirs } from './paths';
+import { claudeConfigDirs, expandHome, routerDir } from './paths';
+import { folderSummary, isRemovable, sizeLabel, withoutDir } from './removeAccount';
 import { applyToCcr, fetchFreeModels, runSetup } from './setup';
 import { exportSettings, importSettings } from './portable';
 import { modelContext, SettingsPanel } from './settings';
@@ -13,6 +16,8 @@ import { cachedUsage, formatTokens, initUsage, refreshUsage, usageLine } from '.
 import { learn, leftLabel, loadCaps, raiseIfPassed, saveCaps } from './caps';
 import { buildCards, buildRows, cardsMarkdown, openRouterQuota, Quota, quotaDetail, renderCards, rowLevel, statusUsageText, UsageRow, UsageViewProvider } from './usageView';
 import { cachedQuota, fetchQuota, setQuotaLog } from './quota';
+import { Voice } from './voice';
+import { applyLook } from './statusItem';
 
 let statusItem: vscode.StatusBarItem;
 let usageItem: vscode.StatusBarItem;
@@ -93,29 +98,28 @@ async function refreshStatus(): Promise<void> {
     const limited = !!limitOf(t);
     const rows = usageRows();
     const currentRow = rows.find((r) => r.current);
-    statusItem.text = t.kind === 'claude' ? `$(sparkle) Claude · ${t.label}${limited ? ' $(watch)' : ''}` : up ? '$(globe) Other AI' : '$(warning) Other AI (stopped)';
-    statusItem.backgroundColor = up && !limited ? undefined : new vscode.ThemeColor('statusBarItem.warningBackground');
+    const statusText = t.kind === 'claude' ? `$(sparkle) Claude · ${t.label}${limited ? ' $(watch)' : ''}` : up ? '$(globe) Other AI' : '$(warning) Other AI (stopped)';
+    const statusBg = up && !limited ? undefined : new vscode.ThemeColor('statusBarItem.warningBackground');
     // A warning background already carries its own foreground; a custom color would fight it.
-    statusItem.color = t.kind === 'claude' && !limited ? colorFor(t.dir) : undefined;
+    const statusColor = t.kind === 'claude' && !limited ? colorFor(t.dir) : undefined;
 
     // Separate compact usage item: "5h 5% · wk 85%". 80% used turns yellow, 95% or a limit turns red
     // (VS Code status items only offer these two backgrounds).
     const usageText = showUsage() && up ? statusUsageText(currentRow, lastQuota).replace(/^ · /, '') : '';
     if (usageText) {
         const level = t.kind === 'claude' ? rowLevel(currentRow) : 'ok';
-        usageItem.text = `$(dashboard) ${usageText}`;
         // VS Code allows extensions only two backgrounds: yellow (warning) and red (error).
         // hoppy.usageBackground: auto = yellow from 80%, red from 95%; yellow/red = always that box (red still wins at 95%).
         const cfg = vscode.workspace.getConfiguration('hoppy');
         const bgMode = cfg.get<string>('usageBackground', 'auto');
         const bg = level === 'critical' || bgMode === 'red' ? 'error' : level === 'warn' || bgMode === 'yellow' ? 'warning' : undefined;
-        usageItem.backgroundColor = bg && new vscode.ThemeColor(`statusBarItem.${bg}Background`);
+        const usageBg = bg ? new vscode.ThemeColor(`statusBarItem.${bg}Background`) : undefined;
         // Font: a hex in hoppy.usageColor always wins; "auto" colors the text only when there is no box
         // (green, amber from 70%), since a box brings its own readable foreground.
         const custom = cfg.get<string>('usageColor', 'auto');
         const top = Math.max(currentRow?.h5Left === undefined ? 0 : 1 - currentRow.h5Left, currentRow?.weekLeft === undefined ? 0 : 1 - currentRow.weekLeft);
-        usageItem.color = /^#[0-9a-f]{3,8}$/i.test(custom) ? custom : custom === 'auto' && !bg ? new vscode.ThemeColor(top >= 0.7 ? 'charts.orange' : 'charts.green') : undefined;
-        usageItem.tooltip = usageTooltip(rows);
+        const usageColor = /^#[0-9a-f]{3,8}$/i.test(custom) ? custom : custom === 'auto' && !bg ? new vscode.ThemeColor(top >= 0.7 ? 'charts.orange' : 'charts.green') : undefined;
+        applyLook(usageItem, { text: `$(dashboard) ${usageText}`, tooltip: usageTooltip(rows), color: usageColor, backgroundColor: usageBg });
         usageItem.show();
     } else {
         usageItem.hide();
@@ -140,7 +144,7 @@ async function refreshStatus(): Promise<void> {
     if (t.kind === 'other' && !up) {
         tip.appendMarkdown(' · [Restart Other AI](command:hoppy.gatewayRestart)');
     }
-    statusItem.tooltip = tip;
+    applyLook(statusItem, { text: statusText, tooltip: tip, color: statusColor, backgroundColor: statusBg });
     statusItem.show();
     void usageView?.refresh();
 }
@@ -490,11 +494,13 @@ async function showVideos(): Promise<void> {
 async function showMore(): Promise<void> {
     const items: (vscode.QuickPickItem & { command: string })[] = [
         { label: '$(book) Getting started guide', command: 'hoppy.guide' },
+        { label: "$(sparkle) What's new", detail: 'Usage in the status bar, Voice to text, remove accounts and everything in this version', command: 'hoppy.whatsNew' },
         { label: '$(play-circle) Video guides', detail: 'Watch the 2-minute overview or the full tutorial', command: 'hoppy.videos' },
         { label: '$(lightbulb) Install /second-opinion skill', detail: 'Ask other models from inside a Claude chat', command: 'hoppy.installSkill' },
         { label: '$(sync) Refresh model list', command: 'hoppy.syncFreeModels' },
         { label: '$(debug-restart) Restart Other AI', detail: 'Use this if Other AI shows "stopped"', command: 'hoppy.gatewayRestart' },
         { label: '$(edit) Rename an account', command: 'hoppy.renameAccount' },
+        { label: '$(trash) Remove an account', detail: 'Moves its folder to the Recycle Bin after you confirm', command: 'hoppy.removeAccount' },
         { label: '$(export) Export settings', detail: 'Model choices and account names, never keys. Share with a teammate or another PC', command: 'hoppy.exportSettings' },
         { label: '$(cloud-download) Import settings', command: 'hoppy.importSettings' },
         { label: '$(info) Show status', command: 'hoppy.status' },
@@ -533,12 +539,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     usageItem.name = 'Hoppy Usage';
     usageItem.command = 'hoppy.usageView.focus';
     context.subscriptions.push(statusItem, usageItem);
+    // Voice to text: "Voice" item next to usage; click, speak, click again.
+    context.subscriptions.push(new Voice(context));
 
     const register = (id: string, fn: () => unknown) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
     register('hoppy.menu', () => showMenu(context));
     register('hoppy.more', () => showMore());
     register('hoppy.videos', () => showVideos());
+    register('hoppy.whatsNew', () =>
+        vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.file(path.join(context.extensionPath, 'CHANGELOG.md'))),
+    );
     context.subscriptions.push(
         vscode.commands.registerCommand('hoppy.settings', (tab?: string) => SettingsPanel.show(context, tab)),
     );
@@ -646,6 +657,90 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 await refreshStatus();
                 SettingsPanel.refresh();
             }
+        }),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('hoppy.removeAccount', async (dir?: string) => {
+            const removable = (x: Target) => x.kind === 'claude' && isRemovable(x.dir, os.homedir(), routerDir());
+            let target = dir ? listTargets().find((x) => sameDir(x.dir, dir)) : undefined;
+            if (!dir) {
+                const items = listTargets()
+                    .filter(removable)
+                    .map((x) => ({ label: `$(sparkle) ${x.label}`, description: x.email || x.dir, target: x }));
+                if (!items.length) {
+                    vscode.window.showInformationMessage('No extra Claude accounts to remove. Main (~/.claude) is Claude Code\'s default and stays.');
+                    return;
+                }
+                target = (await vscode.window.showQuickPick(items, { title: 'Remove which Claude account?' }))?.target;
+            }
+            if (!target) {
+                return;
+            }
+            if (!removable(target)) {
+                vscode.window.showWarningMessage(`${target.label} can't be removed: it is Claude Code's default account (~/.claude).`);
+                return;
+            }
+            const sum = folderSummary(target.dir);
+            const current = isCurrent(target);
+            const pick = await vscode.window.showWarningMessage(
+                `Remove the Claude account "${target.label}"${target.email ? ` (${target.email})` : ''}?`,
+                {
+                    modal: true,
+                    detail: [
+                        'This moves its folder to the Recycle Bin:',
+                        target.dir,
+                        `${sizeLabel(sum.bytes)}${sum.capped ? '+' : ''} · ${sum.chats}${sum.capped ? '+' : ''} chat file(s) · its login`,
+                        '',
+                        'Hoppy also forgets its name, color, project pins and usage numbers.',
+                        current ? 'It is in use now, so the Claude panel switches to Main first.' : '',
+                        'Close Claude tabs that use this account first. You can restore the folder from the Recycle Bin.',
+                    ]
+                        .filter((l, i, a) => l || a[i - 1])
+                        .join('\n'),
+                },
+                'Move to Recycle Bin',
+            );
+            if (pick !== 'Move to Recycle Bin') {
+                return;
+            }
+            if (current) {
+                const main = listTargets().find((x) => x.kind === 'claude' && sameDir(x.dir, path.join(os.homedir(), '.claude')));
+                if (main) {
+                    await pointPanelAt(context, main);
+                }
+            }
+            // Hoppy's own folder watcher holds the folder open; Windows will not delete it while watched.
+            radar?.start(claudeConfigDirs().filter((d) => !sameDir(d, target!.dir)));
+            try {
+                await vscode.workspace.fs.delete(vscode.Uri.file(target.dir), { recursive: true, useTrash: true });
+            } catch (err) {
+                log(`remove account: could not delete ${target.dir}: ${String(err)}`);
+                vscode.window.showErrorMessage(
+                    `Could not move ${target.dir} to the Recycle Bin (${err instanceof Error ? err.message : err}). A Claude tab may still be using it: close it and try again.`,
+                );
+                radar?.start(claudeConfigDirs());
+                await refreshStatus();
+                return;
+            }
+            // Forget everything Hoppy stored for this folder.
+            const cfg = vscode.workspace.getConfiguration('hoppy');
+            const G = vscode.ConfigurationTarget.Global;
+            await cfg.update('accountLabels', withoutDir(cfg.get<Record<string, string>>('accountLabels') || {}, target.dir), G);
+            await cfg.update('accountColors', withoutDir(cfg.get<Record<string, string>>('accountColors') || {}, target.dir), G);
+            await cfg.update('projectAccounts', withoutDir(cfg.get<Record<string, string>>('projectAccounts') || {}, target.dir, true), G);
+            const extra = (cfg.get<string[]>('claudeConfigDirs') || []).filter((d) => !sameDir(expandHome(d), target!.dir));
+            await cfg.update('claudeConfigDirs', extra.length ? extra : undefined, G);
+            await saveCaps(context.globalState, withoutDir(loadCaps(context.globalState), target.dir));
+            await context.globalState.update('hoppy.limits', withoutDir(context.globalState.get<Record<string, LimitHit>>('hoppy.limits') || {}, target.dir));
+            if (sameDir(context.globalState.get<string>('hoppy.previousDir') || '', target.dir)) {
+                await context.globalState.update('hoppy.previousDir', undefined);
+            }
+            radar?.start(claudeConfigDirs());
+            log(`remove account: moved ${target.dir} to the Recycle Bin`);
+            await refreshStatus();
+            SettingsPanel.refresh();
+            vscode.window.showInformationMessage(`Removed "${target.label}". Its folder is in the Recycle Bin if you need it back.`);
         }),
     );
 
@@ -796,9 +891,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     await refreshStatus();
 
+    const version = String(context.extension.packageJSON.version || '');
+    const seenVersion = context.globalState.get<string>('hoppy.lastVersion');
+    await context.globalState.update('hoppy.lastVersion', version);
     if (!context.globalState.get<boolean>('hoppy.welcomed')) {
         await context.globalState.update('hoppy.welcomed', true);
         vscode.commands.executeCommand('hoppy.guide');
+    } else if (isNewerMinor(version, seenVersion)) {
+        // Once per feature release (not for fixes): a short note with a link to the full list.
+        void vscode.window
+            .showInformationMessage(`Hoppy ${version}: Claude usage in the status bar, Voice to text (Bangla too), remove accounts and more.`, "What's new", 'Try Voice')
+            .then((pick) => pick && vscode.commands.executeCommand(pick === 'Try Voice' ? 'hoppy.voiceToggle' : 'hoppy.whatsNew'));
     }
 
     const ccrReady = (await isCcrInstalled()) && (await ccrStatus(context.extensionPath)).exists;
@@ -810,6 +913,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await startGateway();
         await refreshStatus();
     }
+}
+
+/** True when `now` is a newer major or minor release than `before` (patch releases stay quiet). */
+export function isNewerMinor(now: string, before: string | undefined): boolean {
+    if (!before) {
+        return false;
+    }
+    const [a, b] = [now, before].map((v) => v.split('.').map((n) => parseInt(n, 10) || 0));
+    return a[0] > b[0] || (a[0] === b[0] && a[1] > b[1]);
 }
 
 export function deactivate(): void {
