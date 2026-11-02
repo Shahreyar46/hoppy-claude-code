@@ -1,12 +1,10 @@
 # Changelog
 
-## 1.2.3
+## 1.2.2
 
 - Name: **Hoppy - Usage Tracker, Multi-Account Switcher & Voice to Text for Claude Code**. Hoppy's own name comes first; "for Claude Code" only says what it works with. Hoppy is independent and not affiliated with or endorsed by Anthropic.
 - **Rate Hoppy** in the More menu, and one polite request after a few days of real use (never repeated if you say no).
 - Search keywords: claude limit, claude code usage.
-
-(1.2.2 was built but never released.)
 
 ## 1.2.1
 

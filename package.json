@@ -2,7 +2,7 @@
   "name": "hoppy-claude-code",
   "displayName": "Hoppy - Usage Tracker, Multi-Account Switcher & Voice to Text for Claude Code",
   "description": "Independent extension for Claude Code: see your usage limits (exact 5-hour and weekly %) live in the status bar, keep multiple Claude accounts logged in and switch in one click without losing your chat context, continue the same chat on another account or on free AI models (Gemini, DeepSeek, OpenRouter, Groq and 20 more) when you hit a limit, and use voice to text in any language, including Bangla, with automatic translation. Not affiliated with or endorsed by Anthropic.",
-  "version": "1.2.3",
+  "version": "1.2.2",
   "publisher": "shahreyar",
   "license": "MIT",
   "engines": {
