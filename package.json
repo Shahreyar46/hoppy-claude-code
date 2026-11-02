@@ -242,6 +242,12 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Show the exact 5-hour and weekly % used for each Claude account, read from Anthropic (the same numbers as Claude Code's /usage). Hoppy only reads the account's current login token; it never refreshes, changes or stores it. Off: Hoppy shows tokens from local chat files and an estimate."
+        },
+        "hoppy.usageColor": {
+          "type": "string",
+          "default": "auto",
+          "markdownDescription": "Text color of the usage item in the status bar (`5h 2% · wk 60%`). `auto`: green, amber from 70% used. Or any hex color, e.g. `#00e5ff`. Empty: theme default. From 80% used the item gets a yellow, from 95% a red background (the only backgrounds VS Code allows extensions).",
+          "pattern": "^(auto|#[0-9a-fA-F]{3,8}|)$"
         }
       }
     },
