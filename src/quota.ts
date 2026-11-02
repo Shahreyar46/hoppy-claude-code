@@ -53,10 +53,16 @@ export function parseQuota(body: any, now = Date.now()): ClaudeQuota | undefined
     return h5 || week ? { h5, week, at: now } : undefined;
 }
 
-/** Last known exact numbers for an account (any age up to 15 minutes), without network. */
+/** Last known exact numbers for an account (up to 30 minutes old), without network. */
 export function cachedQuota(dir: string): ClaudeQuota | undefined {
     const q = cache.get(key(dir));
-    return q && Date.now() - q.at < 15 * 60000 ? q : undefined;
+    return q && Date.now() - q.at < 30 * 60000 ? q : undefined;
+}
+
+/** Optional logger (no token is ever passed to it). Set by the extension. */
+export let quotaLog: (line: string) => void = () => undefined;
+export function setQuotaLog(fn: (line: string) => void): void {
+    quotaLog = fn;
 }
 
 /** Fetches when the cached value is older than 3 minutes. Returns undefined on any problem. */
@@ -71,6 +77,7 @@ export async function fetchQuota(dir: string, force = false): Promise<ClaudeQuot
     }
     const token = readToken(dir);
     if (!token) {
+        quotaLog(`quota ${path.basename(dir)}: no valid login token (expired or signed out); using local estimate`);
         return hit;
     }
     try {
@@ -79,18 +86,23 @@ export async function fetchQuota(dir: string, force = false): Promise<ClaudeQuot
             signal: AbortSignal.timeout(10000),
         });
         if (r.status === 429) {
-            coolUntil.set(k, Date.now() + COOL_MS);
+            const after = Number(r.headers.get('retry-after'));
+            coolUntil.set(k, Date.now() + (Number.isFinite(after) && after > 0 ? Math.min(after, 1800) * 1000 : COOL_MS));
+            quotaLog(`quota ${path.basename(dir)}: 429 rate limited, retry in ${Number.isFinite(after) && after > 0 ? after : COOL_MS / 1000}s`);
             return hit;
         }
         if (!r.ok) {
+            quotaLog(`quota ${path.basename(dir)}: HTTP ${r.status}`);
             return hit;
         }
         const q = parseQuota(await r.json());
         if (q) {
             cache.set(k, q);
         }
+        quotaLog(`quota ${path.basename(dir)}: ${q ? `5h ${q.h5?.used ?? '-'}%, week ${q.week?.used ?? '-'}%` : 'unexpected answer'}`);
         return q ?? hit;
-    } catch {
+    } catch (err) {
+        quotaLog(`quota ${path.basename(dir)}: request failed (${String((err as Error)?.message || err).slice(0, 80)})`);
         return hit;
     }
 }

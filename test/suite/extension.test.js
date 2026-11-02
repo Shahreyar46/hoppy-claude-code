@@ -610,6 +610,10 @@ suite('Hoppy', () => {
         assert.strictEqual(cards[0].hint, 'Running low → Account 2 has 74% weekly left');
         assert.strictEqual(cards[2].lines[0].detail, '0 today · 19M this week');
         assert.strictEqual(cards[3].lines.length, 0, 'unused account collapsed to one line');
+        const waiting = uv.buildCards([row('m', 'Main', true, undefined, undefined)], undefined, now);
+        assert.strictEqual(waiting[0].status, 'in-use', 'the account in use is never "not used yet"');
+        assert.ok(waiting[0].lines[0].detail.includes('Waiting for usage numbers'));
+        assert.strictEqual(uv.statusUsageText({ kind: 'claude', current: true, h5: 0 }), ' · 5h …');
     });
 
     test('1.2 readable account names and token text in the usage hover', () => {

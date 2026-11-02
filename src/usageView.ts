@@ -98,7 +98,7 @@ export function statusUsageText(row: UsageRow | undefined, quota?: Quota): strin
     if (row.kind === 'other') {
         return quota ? ` · OpenRouter free ${quota.remaining}/${quota.limit}` : row.today !== undefined ? ` · ${formatTokens(row.today)} today` : '';
     }
-    const h5 = pct(row.h5Left, row.exact) ?? (row.h5 !== undefined ? formatTokens(row.h5) : undefined);
+    const h5 = pct(row.h5Left, row.exact) ?? (row.h5 ? `${formatTokens(row.h5)} tok` : '…');
     const wk = pct(row.weekLeft, row.exact);
     const parts = [h5 && `5h ${h5}`, wk && `wk ${wk}`].filter(Boolean);
     if (row.limit) {
@@ -221,6 +221,10 @@ export function buildCards(rows: UsageRow[], quota: Quota | undefined, now = Dat
         add('Session (5h)', r.h5Left, r.h5Reset, r.h5);
         add('Weekly', r.weekLeft, r.weekReset, r.week);
         const full = !!r.limit || lines.some((l) => (l.used ?? 0) >= 100);
+        if (!lines.length && !full && r.current) {
+            // The account in use is never "not used yet": its numbers are just not in yet.
+            lines.push({ label: 'Session (5h)', value: '', detail: `${r.h5 ? `${formatTokens(r.h5)} tokens · ` : ''}Waiting for usage numbers…` });
+        }
         if (!lines.length && !full) {
             unused.push({ dir: r.dir, title: r.label, status: 'unused', lines: [] });
             continue;

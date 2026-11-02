@@ -12,7 +12,7 @@ import { colorFor, createAccountDir, currentDir, currentTarget, describe, isCurr
 import { cachedUsage, formatTokens, initUsage, refreshUsage, usageLine } from './usage';
 import { learn, leftLabel, loadCaps, raiseIfPassed, saveCaps } from './caps';
 import { buildCards, buildRows, cardsMarkdown, openRouterQuota, Quota, quotaDetail, renderCards, rowLevel, statusUsageText, UsageRow, UsageViewProvider } from './usageView';
-import { cachedQuota, fetchQuota } from './quota';
+import { cachedQuota, fetchQuota, setQuotaLog } from './quota';
 
 let statusItem: vscode.StatusBarItem;
 let usageItem: vscode.StatusBarItem;
@@ -697,6 +697,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     );
 
     globalState = context.globalState;
+    // Quota results in View > Output > Hoppy, only when they change per account.
+    const lastQuotaLine = new Map<string, string>();
+    setQuotaLog((line) => {
+        const who = line.split(':')[0];
+        if (lastQuotaLine.get(who) !== line) {
+            lastQuotaLine.set(who, line);
+            log(line);
+        }
+    });
     usageView = new UsageViewProvider(async () => renderCards(buildCards(usageRows(), lastQuota)));
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(UsageViewProvider.id, usageView));
     register('hoppy.refreshUsage', async () => {
