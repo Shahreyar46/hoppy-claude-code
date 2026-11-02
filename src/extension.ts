@@ -105,35 +105,46 @@ function usageTooltip(rows: UsageRow[]): vscode.MarkdownString {
     md.isTrusted = { enabledCommands: ['hoppy.usageView.focus', 'hoppy.refreshUsage'] };
     const when = (ms?: number) => (ms ? new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '');
     const gray = (s: string) => `<span style="color:#9d9d9d;">${s}</span>`;
+    const red = (s: string) => `<span style="color:#f44336;"><b>${s}</b></span>`;
+    // One aligned table, no separate name rows (they made the gaps): Account | Window | bar | Share | Tokens | Resets.
     md.appendMarkdown('**Hoppy · usage**\n\n<table>\n');
-    // Columns: window | bar | % | tokens | resets
+    md.appendMarkdown(`<tr><th align="left">Account&nbsp;</th><th align="left">Window&nbsp;</th><th></th><th align="right">Share&nbsp;</th><th align="left">Tokens&nbsp;</th><th align="left">Resets</th></tr>\n`);
+    const nameCell = (label: string, current: boolean, badge = '') => `<td>${current ? `<b>▶ ${htmlEsc(label)}</b>` : htmlEsc(label)}${badge}&nbsp;</td>`;
     for (const r of rows.filter((x) => x.kind === 'claude')) {
-        const head = `${r.current ? '▶ ' : ''}<b>${htmlEsc(r.label)}</b>${r.current ? gray(' · in use') : ''}${r.limit ? ` · <span style="color:#f44336;">${htmlEsc(r.limit)}</span>` : ''}`;
-        md.appendMarkdown(`<tr><td colspan="5">${head}</td></tr>\n`);
-        if (r.h5Left === undefined && r.weekLeft === undefined) {
-            md.appendMarkdown(`<tr><td>5-hour</td><td colspan="2">${gray('% after next use')}</td><td>${r.h5 === undefined ? '' : `${formatTokens(r.h5)} used`}</td><td></td></tr>\n`);
-            continue;
-        }
         const windows: [string, number | undefined, number | undefined, number | undefined][] = [
             ['5-hour', r.h5Left, r.h5Reset, r.h5],
-            ['Weekly', r.weekLeft, r.weekReset, r.week],
+            ['Weekly (All)', r.weekLeft, r.weekReset, r.week],
         ];
-        for (const [w, left, reset, tokens] of windows.filter(([, l]) => l !== undefined)) {
-            const used = Math.round((1 - (left as number)) * 100);
-            md.appendMarkdown(
-                `<tr><td>${w}&nbsp;</td><td>${hoverBar(used)}</td><td align="right">&nbsp;<b>${r.exact ? '' : '~'}${used}%</b>&nbsp;</td>` +
-                    `<td>${gray(tokenPair(tokens, used))}&nbsp;</td><td>${gray(reset ? `resets ${when(reset)}` : '')}</td></tr>\n`,
-            );
+        const known = windows.filter(([, l]) => l !== undefined);
+        const exhausted = !!r.limit || known.some(([, l]) => (l as number) <= 0.005);
+        const badge = exhausted ? ` ${red('Exhausted')}` : '';
+        if (!known.length) {
+            md.appendMarkdown(`<tr>${nameCell(r.label, r.current, badge)}<td colspan="5">${gray(r.limit ? htmlEsc(r.limit) : 'Not yet active')}</td></tr>\n`);
+            continue;
         }
+        known.forEach(([w, left, reset, tokens], i) => {
+            const used = Math.round((1 - (left as number)) * 100);
+            const share = `${r.exact ? '' : '~'}${used}%`;
+            md.appendMarkdown(
+                `<tr>${i === 0 ? nameCell(r.label, r.current, badge) : '<td></td>'}<td>${w}&nbsp;</td><td>${hoverBar(used)}</td>` +
+                    `<td align="right">&nbsp;${used >= 100 ? red(share) : `<b>${share}</b>`}&nbsp;</td>` +
+                    `<td>${gray(tokenPair(tokens, used))}&nbsp;</td><td>${gray(when(reset))}</td></tr>\n`,
+            );
+        });
     }
     const other = rows.find((x) => x.kind === 'other');
     if (other) {
-        md.appendMarkdown(`<tr><td colspan="5">${other.current ? '▶ ' : ''}<b>Other AI</b>${other.current ? gray(' · in use') : ''}</td></tr>\n`);
+        const tokens = other.today === undefined ? 'no data yet' : `${formatTokens(other.today)} today · ${formatTokens(other.week ?? 0)} week`;
         if (lastQuota && lastQuota.limit > 0) {
             const used = Math.round(((lastQuota.limit - lastQuota.remaining) / lastQuota.limit) * 100);
-            md.appendMarkdown(`<tr><td>Free today&nbsp;</td><td>${hoverBar(used)}</td><td align="right">&nbsp;<b>${lastQuota.remaining}/${lastQuota.limit}</b>&nbsp;</td><td>${gray('OpenRouter left')}</td><td></td></tr>\n`);
+            const badge = lastQuota.remaining <= 0 ? ` ${red('Exhausted')}` : '';
+            md.appendMarkdown(
+                `<tr>${nameCell('Other AI', other.current, badge)}<td>Free today&nbsp;</td><td>${hoverBar(used)}</td>` +
+                    `<td align="right">&nbsp;<b>${lastQuota.remaining}/${lastQuota.limit}</b>&nbsp;</td><td>${gray(tokens)}&nbsp;</td><td>${gray('00:00 UTC')}</td></tr>\n`,
+            );
+        } else {
+            md.appendMarkdown(`<tr>${nameCell('Other AI', other.current)}<td>Tokens&nbsp;</td><td colspan="4">${gray(tokens)}</td></tr>\n`);
         }
-        md.appendMarkdown(`<tr><td>Tokens&nbsp;</td><td colspan="4">${gray(other.today === undefined ? 'no data yet' : `${formatTokens(other.today)} today · ${formatTokens(other.week ?? 0)} this week`)}</td></tr>\n`);
     }
     md.appendMarkdown('</table>\n\n');
     md.appendMarkdown(
