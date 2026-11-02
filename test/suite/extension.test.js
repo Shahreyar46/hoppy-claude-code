@@ -616,7 +616,7 @@ suite('Hoppy', () => {
         assert.deepStrictEqual(withModels[0].models.map((m) => [m.model, m.share]), [['deepseek-chat', 75], ['glm', 25]], 'models by share, unused dropped');
         const sideHtml = uv.renderCards([{ ...cards[0], email: 'a@b.co' }, withModels[0]]);
         assert.ok(sideHtml.includes('a@b.co') && sideHtml.includes('Models this week'));
-        assert.ok(uv.cardsMarkdown(withModels).includes('Details ▸'), 'hover links to the expandable view');
+        assert.ok(uv.cardsMarkdown(withModels).includes('deepseek-chat'), 'hover lists the top models');
         const waiting = uv.buildCards([row('m', 'Main', true, undefined, undefined)], undefined, now);
         assert.strictEqual(waiting[0].status, 'in-use', 'the account in use is never "not used yet"');
         assert.ok(waiting[0].lines[0].detail.includes('Waiting for usage numbers'));

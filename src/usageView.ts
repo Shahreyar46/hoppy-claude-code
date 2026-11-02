@@ -319,15 +319,22 @@ export function cardsMarkdown(cards: Card[]): string {
         return `<span style="background-color:${hex[barLevel(used)]};">${sp(filled)}</span><span style="background-color:#80808044;">${sp(total - filled)}</span>`;
     };
     const muted = (s: string) => `<span style="color:#8b8b8b;">${s}</span>`;
+    // Model share bars stay green: a share is not a limit.
+    const modelBar = (share: number) => {
+        const total = 10;
+        const filled = Math.max(share > 0 ? 1 : 0, Math.min(total, Math.round((share / 100) * total)));
+        return `<span style="background-color:${hex.ok};">${'&nbsp;'.repeat(filled)}</span><span style="background-color:#80808044;">${'&nbsp;'.repeat(total - filled)}</span>`;
+    };
     const badge = (st?: CardStatus) =>
         !st ? '' : st === 'in-use' ? ` <span style="color:#4caf50;">● In use</span>` : st === 'limit' ? ` <span style="color:#f44336;"><b>Limit reached</b></span>` : ` ${muted(STATUS_TEXT[st])}`;
     return cards
         .map((c) => {
-            const head = `**${esc(c.title)}**${c.email ? ` ${muted(`· ${esc(shortEmail(c.email))}`)}` : ''}${badge(c.status)}`;
+            // "@" as an entity, so the hover does not turn the email into a blue mailto link.
+            const email = c.email ? ` ${muted(`· ${esc(shortEmail(c.email)).replace(/@/g, '&#64;')}`)}` : '';
+            const head = `**${esc(c.title)}**${email}${badge(c.status)}`;
             if (!c.lines.length) {
                 return `${head}\n`;
             }
-            const more = c.models?.length ? `\n\n${muted(`${c.models.length} model${c.models.length === 1 ? '' : 's'} used this week ·`)} [Details ▸](command:hoppy.usageView.focus)\n` : '';
             const rows = c.lines
                 .map(
                     (l) =>
@@ -335,7 +342,20 @@ export function cardsMarkdown(cards: Card[]): string {
                         `<tr><td></td><td colspan="2">${muted(esc(l.detail))}</td></tr>`,
                 )
                 .join('\n');
-            return `${head}\n\n<table>\n${rows}\n</table>\n${more}${c.hint ? `\n<span style="color:#ff9800;">${esc(c.hint)}</span>\n` : ''}`;
+            // Other AI: top 5 models right in the hover (share of this week's Other AI tokens), the rest in the view.
+            const top = (c.models || []).slice(0, 5);
+            const modelRows = top.length
+                ? `\n<tr><td colspan="3">${muted('Models this week')}</td></tr>\n` +
+                  top
+                      .map((m) => {
+                          const name = m.model.length > 24 ? `${m.model.slice(0, 23)}…` : m.model;
+                          return `<tr><td>${esc(name)}&nbsp;</td><td>${modelBar(m.share)}</td><td align="right">&nbsp;<b>${formatTokens(m.tokens)}</b></td></tr>`;
+                      })
+                      .join('\n')
+                : '';
+            const rest = (c.models?.length || 0) - top.length;
+            const more = rest > 0 ? `\n${muted(`+${rest} more ·`)} [Details ▸](command:hoppy.usageView.focus)\n` : '';
+            return `${head}\n\n<table>\n${rows}${modelRows}\n</table>\n${more}${c.hint ? `\n<span style="color:#ff9800;">${esc(c.hint)}</span>\n` : ''}`;
         })
         .join('\n---\n\n');
 }
