@@ -104,17 +104,17 @@ async function refreshStatus(): Promise<void> {
     if (usageText) {
         const level = t.kind === 'claude' ? rowLevel(currentRow) : 'ok';
         usageItem.text = `$(dashboard) ${usageText}`;
-        usageItem.backgroundColor = level === 'critical' ? new vscode.ThemeColor('statusBarItem.errorBackground') : level === 'warn' ? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
-        // VS Code allows only yellow/red backgrounds for extensions, so below 80% the text itself is colored
-        // (green, amber from 70%) to stand out. hoppy.usageColor overrides the normal color; "" = theme default.
-        if (level === 'ok') {
-            const custom = vscode.workspace.getConfiguration('hoppy').get<string>('usageColor', 'auto');
-            const top = Math.max(currentRow?.h5Left === undefined ? 0 : 1 - currentRow.h5Left, currentRow?.weekLeft === undefined ? 0 : 1 - currentRow.weekLeft);
-            usageItem.color =
-                custom === 'auto' ? new vscode.ThemeColor(top >= 0.7 ? 'charts.orange' : 'charts.green') : /^#[0-9a-f]{3,8}$/i.test(custom) ? custom : undefined;
-        } else {
-            usageItem.color = undefined;
-        }
+        // VS Code allows extensions only two backgrounds: yellow (warning) and red (error).
+        // hoppy.usageBackground: auto = yellow from 80%, red from 95%; yellow/red = always that box (red still wins at 95%).
+        const cfg = vscode.workspace.getConfiguration('hoppy');
+        const bgMode = cfg.get<string>('usageBackground', 'auto');
+        const bg = level === 'critical' || bgMode === 'red' ? 'error' : level === 'warn' || bgMode === 'yellow' ? 'warning' : undefined;
+        usageItem.backgroundColor = bg && new vscode.ThemeColor(`statusBarItem.${bg}Background`);
+        // Font: a hex in hoppy.usageColor always wins; "auto" colors the text only when there is no box
+        // (green, amber from 70%), since a box brings its own readable foreground.
+        const custom = cfg.get<string>('usageColor', 'auto');
+        const top = Math.max(currentRow?.h5Left === undefined ? 0 : 1 - currentRow.h5Left, currentRow?.weekLeft === undefined ? 0 : 1 - currentRow.weekLeft);
+        usageItem.color = /^#[0-9a-f]{3,8}$/i.test(custom) ? custom : custom === 'auto' && !bg ? new vscode.ThemeColor(top >= 0.7 ? 'charts.orange' : 'charts.green') : undefined;
         usageItem.tooltip = usageTooltip(rows);
         usageItem.show();
     } else {

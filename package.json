@@ -246,8 +246,23 @@
         "hoppy.usageColor": {
           "type": "string",
           "default": "auto",
-          "markdownDescription": "Text color of the usage item in the status bar (`5h 2% · wk 60%`). `auto`: green, amber from 70% used. Or any hex color, e.g. `#00e5ff`. Empty: theme default. From 80% used the item gets a yellow, from 95% a red background (the only backgrounds VS Code allows extensions).",
+          "markdownDescription": "Font color of the usage item (`5h 2% · wk 60%`). `auto`: green, amber from 70% used, theme color on a yellow/red box. Or any hex color, e.g. `#ffffff`, used always. Empty: theme default.",
           "pattern": "^(auto|#[0-9a-fA-F]{3,8}|)$"
+        },
+        "hoppy.usageBackground": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "yellow",
+            "red"
+          ],
+          "enumDescriptions": [
+            "Yellow box from 80% used, red from 95%",
+            "Always a yellow box (red from 95%)",
+            "Always a red box"
+          ],
+          "default": "auto",
+          "markdownDescription": "Background of the usage item in the status bar. VS Code lets extensions use only yellow or red here. To change what that yellow looks like, set `statusBarItem.warningBackground` in `workbench.colorCustomizations` (affects every extension)."
         }
       }
     },
