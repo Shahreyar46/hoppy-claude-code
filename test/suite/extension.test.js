@@ -610,6 +610,13 @@ suite('Hoppy', () => {
         assert.strictEqual(cards[0].hint, 'Running low → Account 2 has 74% weekly left');
         assert.strictEqual(cards[2].lines[0].detail, '0 today · 19M this week');
         assert.strictEqual(cards[3].lines.length, 0, 'unused account collapsed to one line');
+        assert.strictEqual(uv.shortEmail('rahim.hossain.dev@gmail.com'), 'rahim.hossain.dev@gma…');
+        assert.strictEqual(uv.shortEmail('me@work.io'), 'me@work.io');
+        const withModels = uv.buildCards([{ ...rows[3], models: [{ model: 'deepseek-chat', tokens: 3e6 }, { model: 'glm', tokens: 1e6 }, { model: 'zero', tokens: 0 }] }], undefined, now);
+        assert.deepStrictEqual(withModels[0].models.map((m) => [m.model, m.share]), [['deepseek-chat', 75], ['glm', 25]], 'models by share, unused dropped');
+        const sideHtml = uv.renderCards([{ ...cards[0], email: 'a@b.co' }, withModels[0]]);
+        assert.ok(sideHtml.includes('a@b.co') && sideHtml.includes('Models this week'));
+        assert.ok(uv.cardsMarkdown(withModels).includes('Details ▸'), 'hover links to the expandable view');
         const waiting = uv.buildCards([row('m', 'Main', true, undefined, undefined)], undefined, now);
         assert.strictEqual(waiting[0].status, 'in-use', 'the account in use is never "not used yet"');
         assert.ok(waiting[0].lines[0].detail.includes('Waiting for usage numbers'));

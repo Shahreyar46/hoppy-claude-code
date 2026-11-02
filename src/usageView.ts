@@ -27,6 +27,9 @@ export interface UsageRow {
     h5Reset?: number;
     weekReset?: number;
     limit?: string;
+    email?: string;
+    /** Other AI: tokens per model in the last 7 days, largest first. */
+    models?: { model: string; tokens: number }[];
 }
 
 /** Color level from the fuller window: 80% used warns, 95% is critical. */
@@ -73,6 +76,7 @@ export function buildRows(
                 h5Reset: q.h5?.resetsAt,
                 weekReset: q.week?.resetsAt,
                 limit: hit ? resetLabel(hit) : undefined,
+                email: t.email,
             };
         }
         return {
@@ -86,6 +90,8 @@ export function buildRows(
             h5Left: t.kind === 'claude' && u ? fractionLeft(u.last5h.tokens, capFor(caps, t.dir, 'session')) : undefined,
             weekLeft: t.kind === 'claude' && u ? fractionLeft(u.last7d.tokens, capFor(caps, t.dir, 'weekly')) : undefined,
             limit: hit ? resetLabel(hit) : undefined,
+            email: t.kind === 'claude' ? t.email : undefined,
+            models: t.kind === 'other' ? u?.models : undefined,
         };
     });
 }
@@ -163,9 +169,20 @@ export interface CardLine {
 export interface Card {
     dir?: string;
     title: string;
+    email?: string;
     status?: CardStatus;
     lines: CardLine[];
     hint?: string;
+    /** Other AI: per-model breakdown for the expandable section. */
+    models?: { model: string; tokens: number; share: number }[];
+}
+
+/** "rahim.hossain@gm…" for long emails; the full one goes in a tooltip. */
+export function shortEmail(email: string | undefined, max = 22): string {
+    if (!email) {
+        return '';
+    }
+    return email.length > max ? `${email.slice(0, max - 1)}…` : email;
 }
 
 /** Bar color step: green, amber from 70%, red from 90%. */
@@ -226,10 +243,10 @@ export function buildCards(rows: UsageRow[], quota: Quota | undefined, now = Dat
             lines.push({ label: 'Session (5h)', value: '', detail: `${r.h5 ? `${formatTokens(r.h5)} tokens · ` : ''}Waiting for usage numbers…` });
         }
         if (!lines.length && !full) {
-            unused.push({ dir: r.dir, title: r.label, status: 'unused', lines: [] });
+            unused.push({ dir: r.dir, title: r.label, email: r.email, status: 'unused', lines: [] });
             continue;
         }
-        claude.push({ dir: r.dir, title: r.label, status: full ? "limit" : r.current ? "in-use" : "idle", lines });
+        claude.push({ dir: r.dir, title: r.label, email: r.email, status: full ? 'limit' : r.current ? 'in-use' : 'idle', lines });
     }
     // Active account first.
     const currentDir = rows.find((r) => r.current && r.kind === 'claude')?.dir;
@@ -253,7 +270,9 @@ export function buildCards(rows: UsageRow[], quota: Quota | undefined, now = Dat
             lines.push({ label: 'OpenRouter (free)', used: Math.round(((quota.limit - quota.remaining) / quota.limit) * 100), value: `${quota.remaining}/${quota.limit} left`, detail: `resets ${relTime(reset, now)} (00:00 UTC)`, resetAt: reset });
         }
         lines.push({ label: 'Local tokens', value: '', detail: other.today === undefined ? 'No data yet' : `${formatTokens(other.today)} today · ${formatTokens(other.week ?? 0)} this week` });
-        cards.push({ dir: other.dir, title: 'Other AI', status: other.current ? 'in-use' : undefined, lines });
+        const total = (other.models || []).reduce((n, m) => n + m.tokens, 0);
+        const models = (other.models || []).filter((m) => m.tokens > 0).map((m) => ({ ...m, share: total ? Math.round((m.tokens / total) * 100) : 0 }));
+        cards.push({ dir: other.dir, title: 'Other AI', status: other.current ? 'in-use' : undefined, lines, models });
     }
     return [...cards, ...unused];
 }
@@ -274,7 +293,16 @@ export function renderCards(cards: Card[]): string {
                 <div class="l2">${esc(l.detail)}</div></div>`,
                 )
                 .join('');
-            return `<section class="${c.status || ''}"><div class="head"><b>${esc(c.title)}</b>${badge}<span class="grow"></span>${switchLink}</div>${lines}${c.hint ? `<div class="hint">${esc(c.hint)}</div>` : ''}</section>`;
+            const email = c.email ? `<span class="email" title="${esc(c.email)}">· ${esc(shortEmail(c.email))}</span>` : '';
+            const models = c.models?.length
+                ? `<details class="models"${c.models.length ? ' data-remember="other-models"' : ''}><summary><span class="chev">▸</span> Models this week <span class="count">${c.models.length}</span></summary><div class="mlist">${c.models
+                      .map(
+                          (m, i) =>
+                              `<div class="row m${i >= 5 ? ' more' : ''}"><span class="k mname" title="${esc(m.model)}">${esc(m.model)}</span><span class="bar"><span style="width:${m.share}%"></span></span><b class="v">${formatTokens(m.tokens)}</b></div>`,
+                      )
+                      .join('')}${c.models.length > 5 ? `<a href="#" class="showall">Show all (${c.models.length})</a>` : ''}</div></details>`
+                : '';
+            return `<section class="${c.status || ''}"><div class="head"><b>${esc(c.title)}</b>${email}${badge}<span class="grow"></span>${switchLink}</div>${lines}${models}${c.hint ? `<div class="hint">${esc(c.hint)}</div>` : ''}</section>`;
         })
         .join('');
     return `${body}<div class="foot" title="% used comes from Anthropic (the same numbers as /usage). Tokens are counted from local chat files; &quot;~&quot; means an estimate.">ⓘ Where these numbers come from</div>`;
@@ -284,7 +312,8 @@ export function renderCards(cards: Card[]): string {
 export function cardsMarkdown(cards: Card[]): string {
     const hex = { ok: '#4caf50', warn: '#ff9800', critical: '#f44336' };
     const bar = (used: number) => {
-        const total = 16;
+        // Narrow on purpose: VS Code caps the hover width, and wider bars pushed % and reset text off the edge.
+        const total = 10;
         const filled = Math.max(used > 0 ? 1 : 0, Math.min(total, Math.round((used / 100) * total)));
         const sp = (n: number) => '&nbsp;'.repeat(n);
         return `<span style="background-color:${hex[barLevel(used)]};">${sp(filled)}</span><span style="background-color:#80808044;">${sp(total - filled)}</span>`;
@@ -294,17 +323,19 @@ export function cardsMarkdown(cards: Card[]): string {
         !st ? '' : st === 'in-use' ? ` <span style="color:#4caf50;">● In use</span>` : st === 'limit' ? ` <span style="color:#f44336;"><b>Limit reached</b></span>` : ` ${muted(STATUS_TEXT[st])}`;
     return cards
         .map((c) => {
+            const head = `**${esc(c.title)}**${c.email ? ` ${muted(`· ${esc(shortEmail(c.email))}`)}` : ''}${badge(c.status)}`;
             if (!c.lines.length) {
-                return `**${esc(c.title)}**${badge(c.status)}\n`;
+                return `${head}\n`;
             }
+            const more = c.models?.length ? `\n\n${muted(`${c.models.length} model${c.models.length === 1 ? '' : 's'} used this week ·`)} [Details ▸](command:hoppy.usageView.focus)\n` : '';
             const rows = c.lines
                 .map(
                     (l) =>
-                        `<tr><td>${esc(l.label)}&nbsp;&nbsp;</td><td>${l.used === undefined ? '' : bar(l.used)}</td><td align="right">&nbsp;&nbsp;<b>${esc(l.value)}</b></td></tr>` +
+                        `<tr><td>${esc(l.label)}&nbsp;</td><td>${l.used === undefined ? '' : bar(l.used)}</td><td align="right">&nbsp;<b>${esc(l.value)}</b></td></tr>` +
                         `<tr><td></td><td colspan="2">${muted(esc(l.detail))}</td></tr>`,
                 )
                 .join('\n');
-            return `**${esc(c.title)}**${badge(c.status)}\n\n<table>\n${rows}\n</table>\n${c.hint ? `\n<span style="color:#ff9800;">${esc(c.hint)}</span>\n` : ''}`;
+            return `${head}\n\n<table>\n${rows}\n</table>\n${more}${c.hint ? `\n<span style="color:#ff9800;">${esc(c.hint)}</span>\n` : ''}`;
         })
         .join('\n---\n\n');
 }
@@ -357,8 +388,27 @@ a{color:var(--vscode-textLink-foreground);text-decoration:none;font-size:.9em}
 .bar.critical>span{background:var(--vscode-charts-red,#f44336)}
 .hint{margin-top:8px;font-size:.9em;color:var(--vscode-charts-orange,#ff9800)}
 .foot{margin-top:10px;font-size:.85em;color:var(--vscode-descriptionForeground);cursor:help}
+.email{font-size:.85em;color:var(--vscode-descriptionForeground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.models{margin-top:8px}
+.models summary{list-style:none;cursor:pointer;font-size:.9em;color:var(--vscode-descriptionForeground);user-select:none}
+.models summary::-webkit-details-marker{display:none}
+.chev{display:inline-block;transition:transform .18s ease}
+.models[open] .chev{transform:rotate(90deg)}
+.count{opacity:.8}
+.mlist{animation:hoppyOpen .18s ease}
+@keyframes hoppyOpen{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.mname{overflow:hidden;text-overflow:ellipsis;font-size:.92em}
+.mlist .more{display:none}
+.mlist.all .more{display:grid}
+.showall{display:block;margin-top:6px}
 </style></head><body>${await this.content()}
-<script nonce="${nonce}">const vs=acquireVsCodeApi();document.addEventListener('click',e=>{const a=e.target.closest('a[data-dir]');if(a){e.preventDefault();vs.postMessage({type:'switch',dir:a.dataset.dir});}});</script>
+<script nonce="${nonce}">
+const vs=acquireVsCodeApi();const st=vs.getState()||{};
+document.querySelectorAll('details[data-remember]').forEach(d=>{d.open=!!st[d.dataset.remember];d.addEventListener('toggle',()=>{st[d.dataset.remember]=d.open;vs.setState(st);});});
+if(st.allModels)document.querySelectorAll('.mlist').forEach(m=>m.classList.add('all'));
+document.addEventListener('click',e=>{const a=e.target.closest('a[data-dir]');if(a){e.preventDefault();vs.postMessage({type:'switch',dir:a.dataset.dir});return;}
+const s=e.target.closest('a.showall');if(s){e.preventDefault();const m=s.closest('.mlist');m.classList.toggle('all');st.allModels=m.classList.contains('all');vs.setState(st);s.textContent=st.allModels?'Show less':s.textContent.replace('Show less','Show all');}});
+</script>
 </body></html>`;
     }
 }
