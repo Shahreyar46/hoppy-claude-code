@@ -313,7 +313,7 @@ export function cardsMarkdown(cards: Card[]): string {
     const hex = { ok: '#4caf50', warn: '#ff9800', critical: '#f44336' };
     const bar = (used: number) => {
         // Narrow on purpose: VS Code caps the hover width, and wider bars pushed % and reset text off the edge.
-        const total = 10;
+        const total = 15;
         const filled = Math.max(used > 0 ? 1 : 0, Math.min(total, Math.round((used / 100) * total)));
         const sp = (n: number) => '&nbsp;'.repeat(n);
         return `<span style="background-color:${hex[barLevel(used)]};">${sp(filled)}</span><span style="background-color:#80808044;">${sp(total - filled)}</span>`;
@@ -321,7 +321,7 @@ export function cardsMarkdown(cards: Card[]): string {
     const muted = (s: string) => `<span style="color:#8b8b8b;">${s}</span>`;
     // Model share bars stay green: a share is not a limit.
     const modelBar = (share: number) => {
-        const total = 10;
+        const total = 15;
         const filled = Math.max(share > 0 ? 1 : 0, Math.min(total, Math.round((share / 100) * total)));
         return `<span style="background-color:${hex.ok};">${'&nbsp;'.repeat(filled)}</span><span style="background-color:#80808044;">${'&nbsp;'.repeat(total - filled)}</span>`;
     };
@@ -330,7 +330,7 @@ export function cardsMarkdown(cards: Card[]): string {
     return cards
         .map((c) => {
             // "@" as an entity, so the hover does not turn the email into a blue mailto link.
-            const email = c.email ? ` ${muted(`· ${esc(shortEmail(c.email)).replace(/@/g, '&#64;')}`)}` : '';
+            const email = c.email ? ` ${muted(`· ${esc(c.email).replace(/@/g, '&#64;')}`)}` : '';
             const head = `**${esc(c.title)}**${email}${badge(c.status)}`;
             if (!c.lines.length) {
                 return `${head}\n`;
