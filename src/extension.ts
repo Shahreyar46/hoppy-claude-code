@@ -77,11 +77,23 @@ function sortedTargets(): Target[] {
 
 /** Colored bar for hover tables: green, amber at 80%, red at 95% (spans with background survive VS Code's sanitizer). */
 function hoverBar(usedPct: number): string {
-    const total = 20;
-    const filled = Math.max(0, Math.min(total, Math.round((usedPct / 100) * total)));
+    // Only plain color / background-color survive VS Code's hover sanitizer; any other property drops the style.
+    const total = 14;
+    const filled = Math.max(usedPct > 0 ? 1 : 0, Math.min(total, Math.round((usedPct / 100) * total)));
     const color = usedPct >= 95 ? '#f44336' : usedPct >= 80 ? '#ff9800' : '#4caf50';
     const sp = (n: number) => '&nbsp;'.repeat(n);
-    return `<span style="background-color:#8a8a8a;border-radius:3px;font-size:48%;"><span style="background-color:${color};border-radius:3px;">${sp(filled)}</span>${sp(total - filled)}</span>`;
+    return `<span style="background-color:${color};">${sp(filled)}</span><span style="background-color:#5a5a5a;">${sp(total - filled)}</span>`;
+}
+
+/** "12M / ~20M" when the % is big enough to estimate the window's size, else "50K used". */
+export function tokenPair(used: number | undefined, usedPct: number): string {
+    if (used === undefined) {
+        return '';
+    }
+    if (usedPct >= 10 && used > 0) {
+        return `${formatTokens(used)} / ~${formatTokens(Math.round(used / (usedPct / 100)))}`;
+    }
+    return `${formatTokens(used)} used`;
 }
 
 const htmlEsc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
@@ -92,33 +104,42 @@ function usageTooltip(rows: UsageRow[]): vscode.MarkdownString {
     md.supportHtml = true;
     md.isTrusted = { enabledCommands: ['hoppy.usageView.focus', 'hoppy.refreshUsage'] };
     const when = (ms?: number) => (ms ? new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '');
-    md.appendMarkdown('**Hoppy · Claude usage**\n\n<table>\n');
+    const gray = (s: string) => `<span style="color:#9d9d9d;">${s}</span>`;
+    md.appendMarkdown('**Hoppy · usage**\n\n<table>\n');
+    // Columns: window | bar | % | tokens | resets
     for (const r of rows.filter((x) => x.kind === 'claude')) {
-        const name = r.current ? `<b>▶ ${htmlEsc(r.label)}</b>` : htmlEsc(r.label);
-        md.appendMarkdown(`<tr><td colspan="4">${name}${r.limit ? ` · <span style="color:#f44336;">${htmlEsc(r.limit)}</span>` : ''}</td></tr>\n`);
-        const windows: [string, number | undefined, number | undefined][] = [['5 h', r.h5Left, r.h5Reset], ['week', r.weekLeft, r.weekReset]];
+        const head = `${r.current ? '▶ ' : ''}<b>${htmlEsc(r.label)}</b>${r.current ? gray(' · in use') : ''}${r.limit ? ` · <span style="color:#f44336;">${htmlEsc(r.limit)}</span>` : ''}`;
+        md.appendMarkdown(`<tr><td colspan="5">${head}</td></tr>\n`);
         if (r.h5Left === undefined && r.weekLeft === undefined) {
-            const why = r.h5 === undefined ? 'no data yet' : `${formatTokens(r.h5)} tokens in 5 h`;
-            md.appendMarkdown(`<tr><td>&nbsp;&nbsp;</td><td colspan="3"><i>${why} · % shows after this account is used in Claude Code</i></td></tr>\n`);
+            md.appendMarkdown(`<tr><td>5-hour</td><td colspan="2">${gray('% after next use')}</td><td>${r.h5 === undefined ? '' : `${formatTokens(r.h5)} used`}</td><td></td></tr>\n`);
             continue;
         }
-        for (const [w, left, reset] of windows.filter(([, l]) => l !== undefined)) {
+        const windows: [string, number | undefined, number | undefined, number | undefined][] = [
+            ['5-hour', r.h5Left, r.h5Reset, r.h5],
+            ['Weekly', r.weekLeft, r.weekReset, r.week],
+        ];
+        for (const [w, left, reset, tokens] of windows.filter(([, l]) => l !== undefined)) {
             const used = Math.round((1 - (left as number)) * 100);
-            md.appendMarkdown(`<tr><td>&nbsp;&nbsp;${w}</td><td>${hoverBar(used)}</td><td align="right">&nbsp;${r.exact ? '' : '~'}${used}%</td><td align="right">&nbsp;&nbsp;${when(reset)}</td></tr>\n`);
+            md.appendMarkdown(
+                `<tr><td>${w}&nbsp;</td><td>${hoverBar(used)}</td><td align="right">&nbsp;<b>${r.exact ? '' : '~'}${used}%</b>&nbsp;</td>` +
+                    `<td>${gray(tokenPair(tokens, used))}&nbsp;</td><td>${gray(reset ? `resets ${when(reset)}` : '')}</td></tr>\n`,
+            );
         }
     }
     const other = rows.find((x) => x.kind === 'other');
     if (other) {
-        const name = other.current ? '<b>▶ Other AI</b>' : 'Other AI';
-        md.appendMarkdown(`<tr><td colspan="4">${name}</td></tr>\n`);
+        md.appendMarkdown(`<tr><td colspan="5">${other.current ? '▶ ' : ''}<b>Other AI</b>${other.current ? gray(' · in use') : ''}</td></tr>\n`);
         if (lastQuota && lastQuota.limit > 0) {
             const used = Math.round(((lastQuota.limit - lastQuota.remaining) / lastQuota.limit) * 100);
-            md.appendMarkdown(`<tr><td>&nbsp;&nbsp;OpenRouter free</td><td>${hoverBar(used)}</td><td align="right">&nbsp;${lastQuota.remaining}/${lastQuota.limit}</td><td align="right">&nbsp;&nbsp;left today</td></tr>\n`);
+            md.appendMarkdown(`<tr><td>Free today&nbsp;</td><td>${hoverBar(used)}</td><td align="right">&nbsp;<b>${lastQuota.remaining}/${lastQuota.limit}</b>&nbsp;</td><td>${gray('OpenRouter left')}</td><td></td></tr>\n`);
         }
-        md.appendMarkdown(`<tr><td>&nbsp;&nbsp;tokens</td><td colspan="3">${other.today === undefined ? 'no data yet' : `${formatTokens(other.today)} today · ${formatTokens(other.week ?? 0)} this week`}</td></tr>\n`);
+        md.appendMarkdown(`<tr><td>Tokens&nbsp;</td><td colspan="4">${gray(other.today === undefined ? 'no data yet' : `${formatTokens(other.today)} today · ${formatTokens(other.week ?? 0)} this week`)}</td></tr>\n`);
     }
     md.appendMarkdown('</table>\n\n');
-    md.appendMarkdown('[Open Hoppy Usage](command:hoppy.usageView.focus) · [Refresh](command:hoppy.refreshUsage)' + (rows.some((r) => r.kind === 'claude' && !r.exact && (r.h5Left !== undefined || r.weekLeft !== undefined)) ? ' · "~" = estimate' : ''));
+    md.appendMarkdown(
+        '[Open Hoppy Usage](command:hoppy.usageView.focus) · [Refresh](command:hoppy.refreshUsage) · ' +
+            gray('% from Anthropic; tokens from local chats, "~" = estimate'),
+    );
     return md;
 }
 

@@ -53,7 +53,21 @@ function labelFor(dir: string): string {
         return custom[key];
     }
     const name = path.basename(dir);
-    return name === '.claude' ? 'main' : name.replace(/^\.claude-?/, '') || name;
+    return defaultLabel(name);
+}
+
+/** Folder name to a readable default: .claude → "Main", .claude-account2 → "Account 2", .claude-work → "Work". */
+export function defaultLabel(folder: string): string {
+    if (folder === '.claude') {
+        return 'Main';
+    }
+    const rest = folder.replace(/^\.claude-?/, '') || folder;
+    return rest
+        .replace(/([a-z])(\d)/gi, '$1 $2')
+        .split(/[-_ ]+/)
+        .filter(Boolean)
+        .map((w) => w[0].toUpperCase() + w.slice(1))
+        .join(' ');
 }
 
 export function listTargets(): Target[] {

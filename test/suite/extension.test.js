@@ -582,6 +582,16 @@ suite('Hoppy', () => {
         fs2.rmSync(dir, { recursive: true, force: true });
     });
 
+    test('1.2 readable account names and token text in the usage hover', () => {
+        assert.strictEqual(targets.defaultLabel('.claude'), 'Main');
+        assert.strictEqual(targets.defaultLabel('.claude-account2'), 'Account 2');
+        assert.strictEqual(targets.defaultLabel('.claude-work_team'), 'Work Team');
+        const ext = require(path.join(out, 'extension.js'));
+        assert.strictEqual(ext.tokenPair(12e6, 60), '12M / ~20M', 'total estimated from the %');
+        assert.strictEqual(ext.tokenPair(50e3, 1), '50k used', 'too small a % to estimate');
+        assert.strictEqual(ext.tokenPair(undefined, 5), '');
+    });
+
     test('1.2 model lists: every common response shape', () => {
         const setup = require(path.join(out, 'setup.js'));
         const ids = (x) => setup.parseModelList(x).map((m) => m.id);
