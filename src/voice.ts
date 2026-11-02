@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { log } from './log';
 import { runHelper } from './gateway';
 import { applyLook } from './statusItem';
+import { noteWin } from './rating';
 import { currentTarget } from './targets';
 
 /**
@@ -710,6 +711,7 @@ export class Voice implements vscode.Disposable {
         }
         await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
         vscode.window.setStatusBarMessage('$(check) Voice text added. Review it, then press Enter', 5000);
+        noteWin();
         // Put the user's own clipboard back once the paste has happened.
         await delay(1500);
         if ((await vscode.env.clipboard.readText()) === text) {

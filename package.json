@@ -1,8 +1,8 @@
 {
   "name": "hoppy-claude-code",
-  "displayName": "Hoppy - Claude Usage Tracker, Multi-Account Switcher, Voice to Text & Free AI Models",
+  "displayName": "Claude Usage Tracker, Multi-Account Switcher & Voice to Text - Hoppy",
   "description": "See your Claude Code usage limits (exact 5-hour and weekly %) live in the status bar. Keep multiple Claude accounts logged in and switch in one click without losing your chat context. Hit a limit? Continue the same chat on another account or on free AI models (Gemini, DeepSeek, OpenRouter, Groq and 20 more). Voice to text in any language, including Bangla, with automatic translation. Not affiliated with Anthropic.",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "publisher": "shahreyar",
   "license": "MIT",
   "engines": {
@@ -131,6 +131,10 @@
       {
         "command": "hoppy.whatsNew",
         "title": "Hoppy: What's New"
+      },
+      {
+        "command": "hoppy.rate",
+        "title": "Hoppy: Rate on the Marketplace"
       }
     ],
     "keybindings": [
@@ -597,6 +601,8 @@
     "claude code",
     "anthropic",
     "claude usage",
+    "claude code usage",
+    "claude limit",
     "usage limit",
     "rate limit",
     "5 hour limit",

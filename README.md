@@ -1,4 +1,4 @@
-# Hoppy - Claude Usage Tracker, Multi-Account Switcher, Voice to Text & Free AI Models
+# Claude Usage Tracker, Multi-Account Switcher & Voice to Text - Hoppy
 
 **Hoppy is a free VS Code extension for Claude Code that shows your Claude usage limits live in the status bar, keeps multiple Claude accounts logged in and switches between them in one click without losing your chat, continues the same chat on another account or on free AI models when you hit a limit, and adds voice to text in any language with automatic translation.**
 

@@ -17,6 +17,7 @@ import { learn, leftLabel, loadCaps, raiseIfPassed, saveCaps } from './caps';
 import { buildCards, buildRows, cardsMarkdown, openRouterQuota, Quota, quotaDetail, renderCards, rowLevel, statusUsageText, UsageRow, UsageViewProvider } from './usageView';
 import { cachedQuota, fetchQuota, setQuotaLog } from './quota';
 import { Voice } from './voice';
+import { initRating, noteWin, REVIEW_URL } from './rating';
 import { applyLook } from './statusItem';
 
 let statusItem: vscode.StatusBarItem;
@@ -261,6 +262,7 @@ async function switchTo(context: vscode.ExtensionContext, t: Target, note = ''):
     const login = t.kind === 'claude' && !t.loggedIn ? ' Log in there to finish adding it.' : '';
     const chats = synced ? ` ${synced} chat(s) from your other accounts are in /resume.` : '';
     await openFreshClaudeTab(`${note || `Now on ${describe(t)}.`}${chats}${login}`);
+    noteWin();
 }
 
 function targetItems(title: string, exclude?: Target) {
@@ -494,6 +496,7 @@ async function showVideos(): Promise<void> {
 async function showMore(): Promise<void> {
     const items: (vscode.QuickPickItem & { command: string })[] = [
         { label: '$(book) Getting started guide', command: 'hoppy.guide' },
+        { label: "$(star-empty) Rate Hoppy", detail: 'A rating on the Marketplace helps other Claude Code users find Hoppy', command: 'hoppy.rate' },
         { label: "$(sparkle) What's new", detail: 'Usage in the status bar, Voice to text, remove accounts and everything in this version', command: 'hoppy.whatsNew' },
         { label: '$(play-circle) Video guides', detail: 'Watch the 2-minute overview or the full tutorial', command: 'hoppy.videos' },
         { label: '$(lightbulb) Install /second-opinion skill', detail: 'Ask other models from inside a Claude chat', command: 'hoppy.installSkill' },
@@ -532,6 +535,7 @@ async function migrateModelHopSettings(): Promise<void> {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     await migrateModelHopSettings().catch(() => undefined);
+    initRating(context.globalState);
     statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusItem.command = 'hoppy.menu';
     // Just right of the account item: compact "5h 5% · wk 85%"; click opens the Hoppy Usage view.
@@ -547,6 +551,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     register('hoppy.menu', () => showMenu(context));
     register('hoppy.more', () => showMore());
     register('hoppy.videos', () => showVideos());
+    register('hoppy.rate', () => vscode.env.openExternal(vscode.Uri.parse(REVIEW_URL)));
     register('hoppy.whatsNew', () =>
         vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.file(path.join(context.extensionPath, 'CHANGELOG.md'))),
     );

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2
+
+- Name: **Claude Usage Tracker, Multi-Account Switcher & Voice to Text - Hoppy**, so it shows up when you search for Claude usage, accounts or voice.
+- **Rate Hoppy** in the More menu, and one polite request after a few days of real use (never repeated if you say no).
+- Search keywords: claude limit, claude code usage.
+
 ## 1.2.1
 
 - **New name**: Hoppy - Claude Usage Tracker, Multi-Account Switcher, Voice to Text & Free AI Models, so it is clear what Hoppy does. The extension ID is unchanged, so updates and settings carry over.

@@ -776,6 +776,24 @@ suite('Hoppy', () => {
         assert.ok(pkg.description.includes('Not affiliated with Anthropic'));
     });
 
+    test('rating request: only after real use, never twice, respects Later and never', () => {
+        const { shouldAsk, MIN_DAYS, MIN_WINS, LATER_DAYS } = require(path.join(out, 'rating.js'));
+        const day = 86400000;
+        const now = 100 * day;
+        const used = { firstSeen: now - MIN_DAYS * day, wins: MIN_WINS };
+        assert.ok(shouldAsk(used, now), 'days + wins reached');
+        assert.ok(!shouldAsk({ ...used, firstSeen: now - day }, now), 'too new');
+        assert.ok(!shouldAsk({ ...used, wins: MIN_WINS - 1 }, now), 'not enough real use');
+        assert.ok(!shouldAsk({ ...used, done: true }, now), 'rated or never');
+        assert.ok(!shouldAsk({ ...used, askAfter: now + day }, now), 'Later waits');
+        assert.ok(shouldAsk({ ...used, askAfter: now - 1 }, now + 0), 'asks again after Later period');
+        assert.strictEqual(LATER_DAYS, 14);
+        assert.ok(!shouldAsk({}, now), 'no first-seen date');
+        const pkg = ext().packageJSON;
+        assert.ok(pkg.displayName.startsWith('Claude Usage Tracker') && pkg.displayName.endsWith('- Hoppy'));
+        assert.ok(pkg.keywords.includes('claude limit') && pkg.keywords.length <= 30);
+    });
+
     suiteTeardown(async () => {
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
     });
