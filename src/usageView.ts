@@ -144,37 +144,165 @@ export async function openRouterQuota(extensionPath: string, maxAgeMs = 5 * 6000
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 
-/** One bar: filled = used share of the learned cap; without a cap, no bar, just the number. */
-function bar(label: string, tokens: number | undefined, left: number | undefined, exact?: boolean, reset?: number): string {
-    if (tokens === undefined && left === undefined) {
-        return '';
-    }
-    const used = left === undefined ? undefined : 1 - left;
-    const level = used === undefined ? '' : used >= 0.95 ? 'hot' : used >= 0.8 ? 'warm' : '';
-    return `<div class="line">
-        <span class="k">${label}</span>
-        ${used === undefined ? '<span class="nobar"></span>' : `<span class="bar ${level}" title="${exact ? 'From Anthropic' : 'Estimate from the last limit'}"><span style="width:${Math.round(used * 100)}%"></span></span>`}
-        <span class="v">${exact && left !== undefined ? `${Math.round((1 - left) * 100)}%` : tokens === undefined ? '' : formatTokens(tokens)}</span>
-        <span class="left">${esc(exact ? (clock(reset) ? `resets ${clock(reset)}` : 'used') : leftLabel(left) || '')}</span>
-    </div>`;
+// ---- Card model, shared by the sidebar view and the status bar hover ----
+
+export type CardStatus = 'in-use' | 'idle' | 'unused' | 'limit';
+
+export interface CardLine {
+    label: string;
+    /** 0..100 used; undefined = no bar. */
+    used?: number;
+    /** Right-hand value, e.g. "60%" or "37/50 left". */
+    value: string;
+    /** Second, muted line. */
+    detail: string;
+    /** Absolute reset time, for a tooltip. */
+    resetAt?: number;
 }
 
-export function renderRows(rows: UsageRow[], quota: Quota | undefined): string {
-    const cards = rows.map((r) => {
-        const head = `<div class="head"><b>${esc(r.label)}</b>${r.current ? '<span class="tag">in use</span>' : `<a href="#" data-dir="${esc(r.dir)}" title="Switch the Claude panel to ${esc(r.label)}">switch</a>`}</div>`;
-        if (r.kind === 'other') {
-            const q = quota
-                ? `<div class="line wide"><span class="k">OpenRouter free</span><span class="bar ${quota.remaining <= 5 ? 'hot' : ''}"><span style="width:${quota.limit ? Math.round(((quota.limit - quota.remaining) / quota.limit) * 100) : 0}%"></span></span><span class="v">${quota.remaining}/${quota.limit}</span><span class="left">left today</span></div>`
-                : '';
-            return `<section class="${r.current ? 'cur' : ''}">${head}${q}${bar('today', r.today, undefined)}${bar('week', r.week, undefined)}</section>`;
+export interface Card {
+    dir?: string;
+    title: string;
+    status?: CardStatus;
+    lines: CardLine[];
+    hint?: string;
+}
+
+/** Bar color step: green, amber from 70%, red from 90%. */
+export function barLevel(used: number): 'ok' | 'warn' | 'critical' {
+    return used >= 90 ? 'critical' : used >= 70 ? 'warn' : 'ok';
+}
+
+/** "in 4d 7h", "in 3h 38m", "in 12m", "now". */
+export function relTime(at: number | undefined, now = Date.now()): string {
+    if (!at) {
+        return '';
+    }
+    const m = Math.max(0, Math.round((at - now) / 60000));
+    if (m < 1) {
+        return 'now';
+    }
+    const d = Math.floor(m / 1440);
+    const h = Math.floor((m % 1440) / 60);
+    const min = m % 60;
+    return d ? `in ${d}d ${h}h` : h ? `in ${h}h ${min}m` : `in ${min}m`;
+}
+
+/** "76M of ~127M tokens" when the % allows an estimate, "1.4M tokens", or "Nothing used yet". */
+export function tokenText(tokens: number | undefined, used: number | undefined): string {
+    if (!tokens) {
+        return 'Nothing used yet';
+    }
+    if (used !== undefined && used >= 10) {
+        return `${formatTokens(tokens)} of ~${formatTokens(Math.round(tokens / (used / 100)))} tokens`;
+    }
+    return `${formatTokens(tokens)} tokens`;
+}
+
+/** Next 00:00 UTC, when OpenRouter's free counter resets. */
+function nextUtcMidnight(now: number): number {
+    const d = new Date(now);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
+}
+
+export function buildCards(rows: UsageRow[], quota: Quota | undefined, now = Date.now()): Card[] {
+    const claude: Card[] = [];
+    const unused: Card[] = [];
+    for (const r of rows.filter((x) => x.kind === 'claude')) {
+        const lines: CardLine[] = [];
+        const add = (label: string, left: number | undefined, reset: number | undefined, tokens: number | undefined) => {
+            if (left === undefined) {
+                return;
+            }
+            const used = Math.round((1 - left) * 100);
+            const when = relTime(reset, now);
+            lines.push({ label, used, value: `${r.exact ? '' : '~'}${used}%`, detail: `${tokenText(tokens, used)}${when ? ` · resets ${when}` : ''}`, resetAt: reset });
+        };
+        add('Session (5h)', r.h5Left, r.h5Reset, r.h5);
+        add('Weekly', r.weekLeft, r.weekReset, r.week);
+        const full = !!r.limit || lines.some((l) => (l.used ?? 0) >= 100);
+        if (!lines.length && !full) {
+            unused.push({ dir: r.dir, title: r.label, status: 'unused', lines: [] });
+            continue;
         }
-        const limit = r.limit ? `<div class="limit">At its limit · ${esc(r.limit)}</div>` : '';
-        return `<section class="${r.current ? 'cur' : ''}">${head}${limit}${bar('5 h', r.h5, r.h5Left, r.exact, r.h5Reset)}${bar('week', r.week, r.weekLeft, r.exact, r.weekReset)}</section>`;
-    });
-    const note = rows.some((r) => r.exact)
-        ? '% used comes from Anthropic (same numbers as /usage). "~" means an estimate from local chat files.'
-        : 'Tokens from your local chat files. "~%" is an estimate learned from each account last limit.';
-    return `${cards.join('')}<p class="note">${note}</p>`;
+        claude.push({ dir: r.dir, title: r.label, status: full ? "limit" : r.current ? "in-use" : "idle", lines });
+    }
+    // Active account first.
+    const currentDir = rows.find((r) => r.current && r.kind === 'claude')?.dir;
+    claude.sort((a, b) => Number(b.dir === currentDir) - Number(a.dir === currentDir));
+    // Running low: point at the account with the most weekly room.
+    const active = claude.find((c) => c.dir === currentDir);
+    if (active && active.lines.some((l) => (l.used ?? 0) >= 90)) {
+        const best = rows
+            .filter((r) => r.kind === 'claude' && r.dir !== currentDir && r.weekLeft !== undefined && !r.limit)
+            .sort((a, b) => (b.weekLeft as number) - (a.weekLeft as number))[0];
+        if (best && (best.weekLeft as number) > 0.1) {
+            active.hint = `Running low → ${best.label} has ${Math.round((best.weekLeft as number) * 100)}% weekly left`;
+        }
+    }
+    const cards = [...claude];
+    const other = rows.find((r) => r.kind === 'other');
+    if (other) {
+        const lines: CardLine[] = [];
+        if (quota && quota.limit > 0) {
+            const reset = nextUtcMidnight(now);
+            lines.push({ label: 'OpenRouter (free)', used: Math.round(((quota.limit - quota.remaining) / quota.limit) * 100), value: `${quota.remaining}/${quota.limit} left`, detail: `resets ${relTime(reset, now)} (00:00 UTC)`, resetAt: reset });
+        }
+        lines.push({ label: 'Local tokens', value: '', detail: other.today === undefined ? 'No data yet' : `${formatTokens(other.today)} today · ${formatTokens(other.week ?? 0)} this week` });
+        cards.push({ dir: other.dir, title: 'Other AI', status: other.current ? 'in-use' : undefined, lines });
+    }
+    return [...cards, ...unused];
+}
+
+const STATUS_TEXT: Record<CardStatus, string> = { 'in-use': '● In use', idle: 'Idle', unused: 'Not used yet', limit: 'Limit reached' };
+
+/** Sidebar view: full card design (theme colors, dividers, 6px bars, tabular numbers). */
+export function renderCards(cards: Card[]): string {
+    const at = (ms?: number) => (ms ? new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '');
+    const body = cards
+        .map((c) => {
+            const badge = c.status ? `<span class="badge ${c.status}">${STATUS_TEXT[c.status]}</span>` : '';
+            const switchLink = c.dir && c.status !== 'in-use' ? `<a href="#" data-dir="${esc(c.dir)}" title="Switch the Claude panel to ${esc(c.title)}">Switch</a>` : '';
+            const lines = c.lines
+                .map(
+                    (l) => `<div class="row" title="${esc(l.resetAt ? `Resets ${at(l.resetAt)}` : '')}">
+                <div class="l1"><span class="k">${esc(l.label)}</span>${l.used === undefined ? '<span></span>' : `<span class="bar ${barLevel(l.used)}"><span style="width:${Math.min(100, l.used)}%"></span></span>`}<b class="v">${esc(l.value)}</b></div>
+                <div class="l2">${esc(l.detail)}</div></div>`,
+                )
+                .join('');
+            return `<section class="${c.status || ''}"><div class="head"><b>${esc(c.title)}</b>${badge}<span class="grow"></span>${switchLink}</div>${lines}${c.hint ? `<div class="hint">${esc(c.hint)}</div>` : ''}</section>`;
+        })
+        .join('');
+    return `${body}<div class="foot" title="% used comes from Anthropic (the same numbers as /usage). Tokens are counted from local chat files; &quot;~&quot; means an estimate.">ⓘ Where these numbers come from</div>`;
+}
+
+/** Hover version: VS Code hovers keep only color/background-color, so bars are colored spans and dividers are rules. */
+export function cardsMarkdown(cards: Card[]): string {
+    const hex = { ok: '#4caf50', warn: '#ff9800', critical: '#f44336' };
+    const bar = (used: number) => {
+        const total = 16;
+        const filled = Math.max(used > 0 ? 1 : 0, Math.min(total, Math.round((used / 100) * total)));
+        const sp = (n: number) => '&nbsp;'.repeat(n);
+        return `<span style="background-color:${hex[barLevel(used)]};">${sp(filled)}</span><span style="background-color:#80808044;">${sp(total - filled)}</span>`;
+    };
+    const muted = (s: string) => `<span style="color:#8b8b8b;">${s}</span>`;
+    const badge = (st?: CardStatus) =>
+        !st ? '' : st === 'in-use' ? ` <span style="color:#4caf50;">● In use</span>` : st === 'limit' ? ` <span style="color:#f44336;"><b>Limit reached</b></span>` : ` ${muted(STATUS_TEXT[st])}`;
+    return cards
+        .map((c) => {
+            if (!c.lines.length) {
+                return `**${esc(c.title)}**${badge(c.status)}\n`;
+            }
+            const rows = c.lines
+                .map(
+                    (l) =>
+                        `<tr><td>${esc(l.label)}&nbsp;&nbsp;</td><td>${l.used === undefined ? '' : bar(l.used)}</td><td align="right">&nbsp;&nbsp;<b>${esc(l.value)}</b></td></tr>` +
+                        `<tr><td></td><td colspan="2">${muted(esc(l.detail))}</td></tr>`,
+                )
+                .join('\n');
+            return `**${esc(c.title)}**${badge(c.status)}\n\n<table>\n${rows}\n</table>\n${c.hint ? `\n<span style="color:#ff9800;">${esc(c.hint)}</span>\n` : ''}`;
+        })
+        .join('\n---\n\n');
 }
 
 export class UsageViewProvider implements vscode.WebviewViewProvider {
@@ -203,24 +331,28 @@ export class UsageViewProvider implements vscode.WebviewViewProvider {
         this.view.webview.html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
 <style nonce="${nonce}">
-body{font:var(--vscode-font-size) var(--vscode-font-family);color:var(--vscode-foreground);padding:4px 10px 8px;margin:0}
-section{padding:6px 0;border-bottom:1px solid var(--vscode-panel-border,transparent)}
-section.cur b{color:var(--vscode-textLink-foreground)}
-.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-.tag{font-size:.85em;opacity:.75}
+body{font:var(--vscode-font-size) var(--vscode-font-family);color:var(--vscode-foreground);padding:2px 12px 10px;margin:0;font-variant-numeric:tabular-nums}
+section{padding:12px 0;border-top:1px solid color-mix(in srgb,var(--vscode-foreground) 8%,transparent)}
+section:first-child{border-top:0;padding-top:6px}
+.head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.grow{flex:1}
+.badge{font-size:.85em;color:var(--vscode-descriptionForeground)}
+.badge.in-use{color:var(--vscode-charts-green,#4caf50)}
+.badge.limit{color:#fff;background:var(--vscode-charts-red,#f44336);padding:0 6px;border-radius:8px}
+section.unused{padding:8px 0;opacity:.6}
+section.unused .head{margin:0}
 a{color:var(--vscode-textLink-foreground);text-decoration:none;font-size:.9em}
-.line{display:grid;grid-template-columns:3.2em 1fr auto auto;gap:6px;align-items:center;font-size:.92em;line-height:1.7}
-.line .k{opacity:.75;white-space:nowrap}
-.line.wide{grid-template-columns:auto 1fr auto auto}
-.bar,.nobar{height:6px;border-radius:3px;overflow:hidden}
-.bar{background:color-mix(in srgb,var(--vscode-foreground) 15%,transparent)}
-.bar>span{display:block;height:100%;background:var(--vscode-charts-green,#89d185)}
-.bar.warm>span{background:var(--vscode-charts-yellow,#e5c07b)}
-.bar.hot>span{background:var(--vscode-charts-red,#f48771)}
-.v{font-variant-numeric:tabular-nums;text-align:right}
-.left{opacity:.75;font-size:.9em;white-space:nowrap}
-.limit{color:var(--vscode-editorWarning-foreground);font-size:.9em;margin-bottom:2px}
-.note{opacity:.6;font-size:.85em;margin:8px 0 0}
+.row{margin-top:6px;display:grid;grid-template-columns:9.6em 1fr 5.2em;column-gap:8px;align-items:center}
+.l1{display:contents}
+.k{white-space:nowrap}
+.v{text-align:right;white-space:nowrap}
+.l2{grid-column:2/4;font-size:.88em;color:var(--vscode-descriptionForeground)}
+.bar{height:6px;border-radius:3px;overflow:hidden;background:color-mix(in srgb,var(--vscode-foreground) 8%,transparent)}
+.bar>span{display:block;height:100%;border-radius:3px;background:var(--vscode-charts-green,#4caf50)}
+.bar.warn>span{background:var(--vscode-charts-orange,#ff9800)}
+.bar.critical>span{background:var(--vscode-charts-red,#f44336)}
+.hint{margin-top:8px;font-size:.9em;color:var(--vscode-charts-orange,#ff9800)}
+.foot{margin-top:10px;font-size:.85em;color:var(--vscode-descriptionForeground);cursor:help}
 </style></head><body>${await this.content()}
 <script nonce="${nonce}">const vs=acquireVsCodeApi();document.addEventListener('click',e=>{const a=e.target.closest('a[data-dir]');if(a){e.preventDefault();vs.postMessage({type:'switch',dir:a.dataset.dir});}});</script>
 </body></html>`;

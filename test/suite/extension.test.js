@@ -553,9 +553,12 @@ suite('Hoppy', () => {
         assert.strictEqual(rows[1].h5Left, undefined, 'no cap learned for this account');
         assert.strictEqual(uv.statusUsageText(rows[1]), ' · limit reached');
         assert.strictEqual(uv.statusUsageText(rows[2], { remaining: 37, limit: 50 }), ' · OpenRouter free 37/50');
-        const html = uv.renderRows(rows, { remaining: 37, limit: 50 });
+        const cards = uv.buildCards(rows, { remaining: 37, limit: 50 });
+        const html = uv.renderCards(cards);
         assert.ok(html.includes('Me &lt;b&gt;') && !html.includes('Me <b>'), 'labels escaped');
-        assert.ok(html.includes('37/50'));
+        assert.ok(html.includes('37/50 left'));
+        assert.ok(uv.cardsMarkdown(cards).includes('37/50 left'), 'hover shows the same cards');
+        assert.deepStrictEqual(cards.map((c) => [c.title, c.status]), [['Work', 'in-use'], ['Me <b>', 'limit'], ['Other AI', undefined]], 'active first, then others, Other AI after Claude');
 
         // Exact numbers from Anthropic win over the estimate; colors at 80% and 95%.
         const quota = require(path.join(out, 'quota.js'));
@@ -582,14 +585,37 @@ suite('Hoppy', () => {
         fs2.rmSync(dir, { recursive: true, force: true });
     });
 
+    test('1.2 usage cards: labels, order, hint, times', () => {
+        const uv = require(path.join(out, 'usageView.js'));
+        const now = Date.UTC(2026, 10, 2, 12, 0);
+        assert.strictEqual(uv.relTime(now + (4 * 24 + 7) * 3600e3 + 5000, now), 'in 4d 7h');
+        assert.strictEqual(uv.relTime(now + (3 * 60 + 38) * 60e3, now), 'in 3h 38m');
+        assert.strictEqual(uv.relTime(now - 1, now), 'now');
+        assert.strictEqual(uv.tokenText(0, 2), 'Nothing used yet');
+        assert.strictEqual(uv.tokenText(76e6, 60), '76M of ~127M tokens');
+        assert.strictEqual(uv.tokenText(1.4e6, 8), '1.4M tokens');
+        assert.deepStrictEqual([uv.barLevel(69), uv.barLevel(70), uv.barLevel(90)], ['ok', 'warn', 'critical']);
+        const row = (dir, label, current, h5Left, weekLeft, extra = {}) => ({ dir, label, kind: 'claude', current, h5Left, weekLeft, exact: true, h5: 0, week: 76e6, ...extra });
+        const rows = [
+            row('a3', 'Account 3', false, undefined, undefined),
+            row('a2', 'Account 2', false, 0.92, 0.74, { h5: 1.4e6 }),
+            row('m', 'Main', true, 0.98, 0.05, { h5Reset: now + 3 * 3600e3 }),
+            { dir: 'r', label: 'Other AI', kind: 'other', current: false, today: 0, week: 19e6 },
+        ];
+        const cards = uv.buildCards(rows, undefined, now);
+        assert.deepStrictEqual(cards.map((c) => [c.title, c.status]), [['Main', 'in-use'], ['Account 2', 'idle'], ['Other AI', undefined], ['Account 3', 'unused']], 'active first, unused last');
+        assert.strictEqual(cards[0].lines[0].label, 'Session (5h)');
+        assert.strictEqual(cards[0].lines[0].detail, 'Nothing used yet · resets in 3h 0m');
+        assert.strictEqual(cards[0].lines[1].label, 'Weekly');
+        assert.strictEqual(cards[0].hint, 'Running low → Account 2 has 74% weekly left');
+        assert.strictEqual(cards[2].lines[0].detail, '0 today · 19M this week');
+        assert.strictEqual(cards[3].lines.length, 0, 'unused account collapsed to one line');
+    });
+
     test('1.2 readable account names and token text in the usage hover', () => {
         assert.strictEqual(targets.defaultLabel('.claude'), 'Main');
         assert.strictEqual(targets.defaultLabel('.claude-account2'), 'Account 2');
         assert.strictEqual(targets.defaultLabel('.claude-work_team'), 'Work Team');
-        const ext = require(path.join(out, 'extension.js'));
-        assert.strictEqual(ext.tokenPair(12e6, 60), '12M / ~20M', 'total estimated from the %');
-        assert.strictEqual(ext.tokenPair(50e3, 1), '50k used', 'too small a % to estimate');
-        assert.strictEqual(ext.tokenPair(undefined, 5), '');
     });
 
     test('1.2 model lists: every common response shape', () => {

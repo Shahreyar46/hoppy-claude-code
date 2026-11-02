@@ -11,7 +11,7 @@ import { installSkill } from './skill';
 import { colorFor, createAccountDir, currentDir, currentTarget, describe, isCurrent, applyProjectPin, isProjectPinned, listTargets, pinProject, sameDir, setLabel, setTarget, Target, unpinProject } from './targets';
 import { cachedUsage, formatTokens, initUsage, refreshUsage, usageLine } from './usage';
 import { learn, leftLabel, loadCaps, raiseIfPassed, saveCaps } from './caps';
-import { buildRows, openRouterQuota, Quota, quotaDetail, renderRows, rowLevel, statusUsageText, UsageRow, UsageViewProvider } from './usageView';
+import { buildCards, buildRows, cardsMarkdown, openRouterQuota, Quota, quotaDetail, renderCards, rowLevel, statusUsageText, UsageRow, UsageViewProvider } from './usageView';
 import { cachedQuota, fetchQuota } from './quota';
 
 let statusItem: vscode.StatusBarItem;
@@ -75,82 +75,14 @@ function sortedTargets(): Target[] {
     return all.map((t, i) => ({ t, i })).sort((a, b) => rank(a.t) - rank(b.t) || a.i - b.i).map((x) => x.t);
 }
 
-/** Colored bar for hover tables: green, amber at 80%, red at 95% (spans with background survive VS Code's sanitizer). */
-function hoverBar(usedPct: number): string {
-    // Only plain color / background-color survive VS Code's hover sanitizer; any other property drops the style.
-    const total = 14;
-    const filled = Math.max(usedPct > 0 ? 1 : 0, Math.min(total, Math.round((usedPct / 100) * total)));
-    const color = usedPct >= 95 ? '#f44336' : usedPct >= 80 ? '#ff9800' : '#4caf50';
-    const sp = (n: number) => '&nbsp;'.repeat(n);
-    return `<span style="background-color:${color};">${sp(filled)}</span><span style="background-color:#5a5a5a;">${sp(total - filled)}</span>`;
-}
-
-/** "12M / ~20M" when the % is big enough to estimate the window's size, else "50K used". */
-export function tokenPair(used: number | undefined, usedPct: number): string {
-    if (used === undefined) {
-        return '';
-    }
-    if (usedPct >= 10 && used > 0) {
-        return `${formatTokens(used)} / ~${formatTokens(Math.round(used / (usedPct / 100)))}`;
-    }
-    return `${formatTokens(used)} used`;
-}
-
-const htmlEsc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
-
-/** Hover table for the usage item: every Claude account, 5 h and week, bar, % used, reset time. */
+/** Hover for the usage item: the same cards as the Hoppy Usage view, within what VS Code hovers can render. */
 function usageTooltip(rows: UsageRow[]): vscode.MarkdownString {
     const md = new vscode.MarkdownString(undefined, true);
     md.supportHtml = true;
     md.isTrusted = { enabledCommands: ['hoppy.usageView.focus', 'hoppy.refreshUsage'] };
-    const when = (ms?: number) => (ms ? new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '');
-    const gray = (s: string) => `<span style="color:#9d9d9d;">${s}</span>`;
-    const red = (s: string) => `<span style="color:#f44336;"><b>${s}</b></span>`;
-    // One aligned table, no separate name rows (they made the gaps): Account | Window | bar | Share | Tokens | Resets.
-    md.appendMarkdown('**Hoppy · usage**\n\n<table>\n');
-    md.appendMarkdown(`<tr><th align="left">Account&nbsp;</th><th align="left">Window&nbsp;</th><th></th><th align="right">Share&nbsp;</th><th align="left">Tokens&nbsp;</th><th align="left">Resets</th></tr>\n`);
-    const nameCell = (label: string, current: boolean, badge = '') => `<td>${current ? `<b>▶ ${htmlEsc(label)}</b>` : htmlEsc(label)}${badge}&nbsp;</td>`;
-    for (const r of rows.filter((x) => x.kind === 'claude')) {
-        const windows: [string, number | undefined, number | undefined, number | undefined][] = [
-            ['5-hour', r.h5Left, r.h5Reset, r.h5],
-            ['Weekly (All)', r.weekLeft, r.weekReset, r.week],
-        ];
-        const known = windows.filter(([, l]) => l !== undefined);
-        const exhausted = !!r.limit || known.some(([, l]) => (l as number) <= 0.005);
-        const badge = exhausted ? ` ${red('Exhausted')}` : '';
-        if (!known.length) {
-            md.appendMarkdown(`<tr>${nameCell(r.label, r.current, badge)}<td colspan="5">${gray(r.limit ? htmlEsc(r.limit) : 'Not yet active')}</td></tr>\n`);
-            continue;
-        }
-        known.forEach(([w, left, reset, tokens], i) => {
-            const used = Math.round((1 - (left as number)) * 100);
-            const share = `${r.exact ? '' : '~'}${used}%`;
-            md.appendMarkdown(
-                `<tr>${i === 0 ? nameCell(r.label, r.current, badge) : '<td></td>'}<td>${w}&nbsp;</td><td>${hoverBar(used)}</td>` +
-                    `<td align="right">&nbsp;${used >= 100 ? red(share) : `<b>${share}</b>`}&nbsp;</td>` +
-                    `<td>${gray(tokenPair(tokens, used))}&nbsp;</td><td>${gray(when(reset))}</td></tr>\n`,
-            );
-        });
-    }
-    const other = rows.find((x) => x.kind === 'other');
-    if (other) {
-        const tokens = other.today === undefined ? 'no data yet' : `${formatTokens(other.today)} today · ${formatTokens(other.week ?? 0)} week`;
-        if (lastQuota && lastQuota.limit > 0) {
-            const used = Math.round(((lastQuota.limit - lastQuota.remaining) / lastQuota.limit) * 100);
-            const badge = lastQuota.remaining <= 0 ? ` ${red('Exhausted')}` : '';
-            md.appendMarkdown(
-                `<tr>${nameCell('Other AI', other.current, badge)}<td>Free today&nbsp;</td><td>${hoverBar(used)}</td>` +
-                    `<td align="right">&nbsp;<b>${lastQuota.remaining}/${lastQuota.limit}</b>&nbsp;</td><td>${gray(tokens)}&nbsp;</td><td>${gray('00:00 UTC')}</td></tr>\n`,
-            );
-        } else {
-            md.appendMarkdown(`<tr>${nameCell('Other AI', other.current)}<td>Tokens&nbsp;</td><td colspan="4">${gray(tokens)}</td></tr>\n`);
-        }
-    }
-    md.appendMarkdown('</table>\n\n');
-    md.appendMarkdown(
-        '[Open Hoppy Usage](command:hoppy.usageView.focus) · [Refresh](command:hoppy.refreshUsage) · ' +
-            gray('% from Anthropic; tokens from local chats, "~" = estimate'),
-    );
+    md.appendMarkdown('**Hoppy · Usage** &nbsp; [$(refresh)](command:hoppy.refreshUsage "Refresh")\n\n---\n\n');
+    md.appendMarkdown(cardsMarkdown(buildCards(rows, lastQuota)));
+    md.appendMarkdown('\n---\n\n[Open Hoppy Usage](command:hoppy.usageView.focus) &nbsp; [$(info)](command:hoppy.usageView.focus "% used comes from Anthropic (same as /usage). Tokens are counted from local chat files; ~ means an estimate.")');
     return md;
 }
 
@@ -765,7 +697,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     );
 
     globalState = context.globalState;
-    usageView = new UsageViewProvider(async () => renderRows(usageRows(), lastQuota));
+    usageView = new UsageViewProvider(async () => renderCards(buildCards(usageRows(), lastQuota)));
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(UsageViewProvider.id, usageView));
     register('hoppy.refreshUsage', async () => {
         refreshAllUsage(0);
